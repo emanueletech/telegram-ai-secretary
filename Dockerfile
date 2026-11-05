@@ -29,6 +29,11 @@ assert p.exists(), 'bundled Claude Code CLI missing for this architecture'; \
 print('bundled Claude Code CLI OK:', p, p.stat().st_size // 1048576, 'MB')"
 
 COPY app /app
+# Extensions dropped into app/extensions/ (e.g. by a deploy overlay) may bring
+# their own requirements.txt; install it when present.
+RUN if [ -f /app/extensions/requirements.txt ]; then \
+        pip install -r /app/extensions/requirements.txt; \
+    fi
 
 # Non-root user: claude-code CLI refuses --dangerously-skip-permissions
 # when running as root. UID/GID 1000 typically matches the host user on NAS appliances.

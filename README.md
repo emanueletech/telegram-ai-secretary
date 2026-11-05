@@ -174,6 +174,8 @@ Need a feature that only makes sense for your own deployment (a custom
 whose name doesn't start with `_` and calls its `register(app)`, **before** the
 built-in handlers — so an extension can claim e.g. `/start mypayload` ahead of
 the owner's `/start`. A failing extension is logged and skipped, never fatal.
+Extra Python dependencies go in `app/extensions/requirements.txt`: the
+Dockerfile installs it when present.
 See [`app/extensions/_example.py`](./app/extensions/_example.py).
 
 To keep those modules — and your personal settings — out of this repo, keep
