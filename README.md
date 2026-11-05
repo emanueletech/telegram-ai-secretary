@@ -44,48 +44,48 @@ Everything is set from Telegram itself. Open a chat with your bot and send **`/m
   <img src="docs/panel.svg" alt="The control panel: status summary and a grid of buttons" width="640" />
 </p>
 
-> The panel is in Italian, like its author. Here is what each button does.
+The panel speaks English by default; set `UI_LANGUAGE=it` for Italian. Adding a language is one block of text in [`app/i18n.py`](./app/i18n.py).
 
 ### 🕹️ Modes (top four buttons)
 
 The active mode has a ✅. Tap another one to switch.
 
-| Button | Mode | What the bot does with an incoming DM |
-|---|---|---|
-| 🤖 **AI** | `ai` | Always answers with the AI. |
-| ⏰ **Automatico** | `auto` | AI during the hours set in 🕐 *Orari AI*, away message outside them. |
-| 💤 **Assenza** | `away` | Always sends the fixed away message. |
-| 🔴 **Spento** | `off` | Ignores every message. |
+| Button | What the bot does with an incoming DM |
+|---|---|
+| 🤖 **AI** | Always answers with the AI. |
+| ⏰ **Automatic** | AI during the hours set in 🕐 *AI hours*, away message outside them. |
+| 💤 **Away** | Always sends the fixed away message. |
+| 🔴 **Off** | Ignores every message. |
 
 ### ⚙️ Settings
 
-| Button | Meaning | What it does |
-|---|---|---|
-| 📊 **Statistiche** | Stats | AI and away replies, forwards, your relayed answers, channel invites, paused chats, connection status. |
-| 📨 **Inoltro: ON/OFF** | Forwarding | Turns forwarding of important messages to you on or off. |
-| ✍️ **Messaggio assenza** | Away message | Shows the current text. Type the new one as your next message (❌ *Annulla* to cancel). |
-| 🧠 **Personalità AI** | AI personality | The instructions the AI follows: who you are, the tone, what not to promise. Type the new one; changing it clears the conversation memory. |
-| 📚 **Info attività** | Business info | The knowledge base: ✏️ *Modifica* to edit it, 🗑 *Svuota* to clear it. |
-| 🕐 **Orari AI** | AI hours | ✏️ *Imposta fascia*, then type e.g. `09:00-19:00` (windows across midnight work), or ♾ *Sempre attivo*. |
-| ▶️ **Riattiva ovunque** | Resume everywhere | Lifts every pause, so the bot answers again in chats you had taken over. |
-| 🗑 **Cancella memoria** | Clear memory | Forgets all conversations (asks for confirmation). |
-| 📢 **Invia invito al canale** | Send channel invite | Sends your channel's invite to a customer: type their `chat_id`. Only shown when a channel is configured. |
-| ♻️ **Ripristina default** | Restore defaults | Puts back the default away message and personality (asks for confirmation). |
+| Button | What it does |
+|---|---|
+| 📊 **Stats** | AI and away replies, forwards, your relayed answers, channel invites, paused chats, connection status. |
+| 📨 **Forwarding: ON/OFF** | Turns forwarding of important messages to you on or off. |
+| ✍️ **Away message** | Shows the current text; type the new one as your next message (❌ *Cancel* to back out). |
+| 🧠 **AI personality** | The instructions the AI follows: who you are, the tone, what not to promise. Type the new one; changing it clears the conversation memory. |
+| 📚 **Business info** | The knowledge base the AI answers from: ✏️ *Edit* or 🗑 *Clear*. |
+| 🕐 **AI hours** | ✏️ *Set hours*, then type e.g. `09:00-19:00` (windows across midnight work), or ♾ *Always on*. |
+| ▶️ **Resume everywhere** | Lifts every pause, so the bot answers again in chats you had taken over. |
+| 🗑 **Clear memory** | Forgets all conversations (asks for confirmation). |
+| 📢 **Send channel invite** | Sends your channel's invite to a customer: type their `chat_id`. Shown only when a channel is configured. |
+| ♻️ **Restore defaults** | Puts back the default away message and personality (asks for confirmation). |
 
 ### 📨 When a message is forwarded to you
 
-You get a **📨 Messaggio da inoltrare** notice in the bot chat: who wrote, what they said, what the bot answered.
+You get a **📨 Message to forward** notice in the bot chat: who wrote, what they said, what the bot answered.
 
 - **Reply to that notice** and your text goes straight to the customer, from your account.
 - The bot then stays **silent in that chat for 30 minutes** (`HANDOFF_PAUSE_SECONDS`), so it never talks over you. The same happens when you type in the chat yourself. Each message you send restarts the timer.
-- To bring it back earlier, tap **▶️ Riattiva il bot qui** under the confirmation, or ▶️ *Riattiva ovunque* in the panel.
+- To bring it back earlier, tap **▶️ Resume the bot here** under the confirmation, or ▶️ *Resume everywhere* in the panel.
 
 <details>
 <summary>⌨️ <b>Slash commands</b> (shortcuts, for those who prefer typing)</summary>
 
 | Command | Effect |
 |---|---|
-| `/menu` | Open the control panel (`/impostazioni`, `/pannello` work too) |
+| `/menu` | Open the control panel |
 | `/status` | Current state, connection, mode, stats |
 | `/mode off\|away\|ai\|auto` | Switch mode |
 | `/away <text>` | Change the away message |
@@ -177,12 +177,14 @@ Everything lives in `.env`; [`.env.example`](./.env.example) is the annotated li
 | `WHISPER_LANGUAGE` | _(auto)_ | Force a language (e.g. `it`) for short clips |
 | `VOICE_MAX_SECONDS` | `300` | Longer voice notes go to you instead of being transcribed (`0` = no limit) |
 | `PROMO_CHANNEL_URL` | _(empty)_ | Channel invite link for the promo button (empty = feature off) |
-| `PROMO_BUTTON_TEXT` | `📢 Canale Telegram` | Label of the promo button |
+| `PROMO_BUTTON_TEXT` | `📢 Our channel` | Label of the promo button |
 | `PROMO_CHANNEL_DESCRIPTION` | _(empty)_ | What the channel is about, so the AI can answer questions on it |
-| `PROMO_APPEND_TEXT` / `PROMO_APPEND_TEXT_EN` | _(generic)_ | Invite line under the reply: Italian chats / any other language |
-| `PROMO_MANUAL_TEXT` | _(generic)_ | Text sent with the button by `/promo` |
+| `PROMO_APPEND_TEXT` / `PROMO_APPEND_TEXT_IT` | _(generic)_ | Invite line under the reply: any language / Italian chats |
+| `PROMO_MANUAL_TEXT` / `PROMO_MANUAL_TEXT_IT` | _(generic)_ | Text sent with the button by `/promo` |
 | `PROMO_COOLDOWN_DAYS` | `30` | Minimum days between two invites to the same chat |
 | `TZ` | `Europe/Rome` | Time zone used by the AI hours |
+| `UI_LANGUAGE` | `en` | Language of your panel and notices: `en` or `it` |
+| `FORWARD_ACK` / `FORWARD_ACK_IT` | _(generic)_ | Reply sent when a chat is handed to you without an AI answer |
 
 A few behaviours are constants in `app/config.py`: reply cooldown per chat (8 s), forward cooldown (5 min), memory length (12 turns), incoming text cap (3000 characters).
 
@@ -218,6 +220,7 @@ Secrets (bot token, AI credentials, keys) stay in `.env` on the server only.
 app/
   bot.py         entrypoint, handler wiring, extension loader, heartbeat
   config.py      env vars and tunable constants
+  i18n.py        panel and notice texts, one block per language
   handlers.py    business messages, control panel, owner commands, DM relay
   ai.py          AI backends, per-chat memory, internal markers
   state.py       JSON state in data/state.json: mode, schedule, pauses, stats

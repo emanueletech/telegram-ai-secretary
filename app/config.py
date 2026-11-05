@@ -16,7 +16,6 @@ if CLAUDE_BACKEND == "agent_sdk" and ANTHROPIC_API_KEY:
 
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
 CLAUDE_MAX_TOKENS = int(os.environ.get("CLAUDE_MAX_TOKENS", "400"))
-DEFAULT_LANG = os.environ.get("DEFAULT_LANG", "en")
 
 # Model for the agent_sdk backend (Claude Max via OAuth). Accepts Claude Code
 # aliases ("sonnet", "opus", "haiku") or a full model id. Empty = CLI default.
@@ -45,20 +44,20 @@ def _check_data_dir_writable() -> None:
     except OSError as e:
         raise SystemExit(
             "\n" + "=" * 72 + "\n"
-            f"{DATA_DIR} non è scrivibile dall'utente del container (uid 1000).\n"
-            f"Dettaglio: {e}\n\n"
-            "Due cause possibili — guarda i permessi sull'host:\n\n"
-            "1) La cartella appartiene a root. Docker la crea così quando manca\n"
-            "   (primo avvio con sudo, o progetto appena spostato):\n"
+            f"{DATA_DIR} is not writable by the container user (uid 1000).\n"
+            f"Detail: {e}\n\n"
+            "Two possible causes — check the permissions on the host:\n\n"
+            "1) The folder belongs to root. Docker creates it that way when it\n"
+            "   is missing (first start with sudo, or a freshly moved project):\n"
             "       sudo chown -R 1000:1000 data\n\n"
-            "2) I permessi SEMBRANO giusti (owner 1000, modo 777) ma la scrittura\n"
-            "   viene comunque negata: è l'ACL del NAS, che ha la precedenza sui\n"
-            "   permessi POSIX. La riconosci dal '+' in 'drwxrwxrwx+' e da:\n"
+            "2) The permissions LOOK right (owner 1000, mode 777) but writes are\n"
+            "   still denied: a NAS ACL, which wins over POSIX permissions. You\n"
+            "   spot it by the '+' in 'drwxrwxrwx+' and with:\n"
             "       getfattr -d -m - data | grep -i acl\n"
-            "   chmod e chown non la toccano: va ricreata la cartella copiando i\n"
-            "   file con 'cp -r' (MAI 'cp -a', che si porta dietro l'ACL).\n"
-            "   Procedura completa in SETUP.md, sezione 13.\n\n"
-            "Poi: sudo /usr/bin/docker compose up -d\n"
+            "   chmod and chown don't touch it: recreate the folder copying the\n"
+            "   files with 'cp -r' (NEVER 'cp -a', which carries the ACL over).\n"
+            "   Full procedure in SETUP.md, section 13.\n\n"
+            "Then: sudo docker compose up -d\n"
             + "=" * 72 + "\n"
         )
 
@@ -93,10 +92,16 @@ VOICE_MAX_SECONDS = int(os.environ.get("VOICE_MAX_SECONDS", "300"))
 # Persisted on the mounted data volume so the model isn't re-downloaded on rebuild
 WHISPER_CACHE_DIR = DATA_DIR / "whisper-models"
 
-DEFAULT_AWAY_MESSAGE = (
-    "Hi! I'm not available right now. "
-    "I'll get back to you as soon as I can."
-)
+# Language of the owner's control panel and notices: "en" (default) or "it".
+# Also the language of the bot's fixed lines to a customer until the AI has
+# replied to them once (after that, those follow the customer's language).
+UI_LANGUAGE = os.environ.get("UI_LANGUAGE", "en").strip().lower() or "en"
+
+_DEFAULT_AWAY = {
+    "en": "Hi! I'm not available right now. I'll get back to you as soon as I can.",
+    "it": "Ciao! Al momento non sono disponibile, ti rispondo appena posso.",
+}
+DEFAULT_AWAY_MESSAGE = _DEFAULT_AWAY.get(UI_LANGUAGE, _DEFAULT_AWAY["en"])
 DEFAULT_SYSTEM_PROMPT = (
     "You are the personal assistant of the owner of this Telegram account. "
     "Reply on their behalf in a friendly, concise tone, in the same language "
@@ -211,7 +216,7 @@ SENDER_CONTEXT = (
 # When set, the bot attaches an inline button with this (tracking) invite link
 # to its first reply in each chat, under a short invite line. Empty = off.
 PROMO_CHANNEL_URL = os.environ.get("PROMO_CHANNEL_URL", "").strip()
-PROMO_BUTTON_TEXT = os.environ.get("PROMO_BUTTON_TEXT", "📢 Canale Telegram").strip()
+PROMO_BUTTON_TEXT = os.environ.get("PROMO_BUTTON_TEXT", "📢 Our channel").strip()
 # What the channel is about, told to the AI so it can answer questions about
 # the invite (e.g. "tech and Amazon deals"). Optional.
 PROMO_CHANNEL_DESCRIPTION = os.environ.get("PROMO_CHANNEL_DESCRIPTION", "").strip()
@@ -234,17 +239,25 @@ PROMO_ALREADY_NOTE = (
     "\n\n(You already suggested the owner's channel to this person "
     "recently — do not bring it up again unless they ask about it.)"
 )
+
+
+def _customer_texts(name: str, en: str, it: str) -> dict[str, str]:
+    """A fixed line the bot sends to customers, in English (env NAME) and
+    Italian (env NAME_IT). Which one goes out follows the customer's language:
+    Italian chats get "it", every other language gets "en"."""
+    return {
+        "en": os.environ.get(name, en).strip(),
+        "it": os.environ.get(f"{name}_IT", it).strip(),
+    }
+
+
 # Invite line the bot appends under the reply that carries the button — a
-# button with nothing explaining it just confuses people. Italian for Italian
-# conversations, English for every other language (see ai.last_language).
-PROMO_APPEND_TEXT = os.environ.get(
+# button with nothing explaining it just confuses people.
+PROMO_APPEND_TEXT = _customer_texts(
     "PROMO_APPEND_TEXT",
-    "P.S. se ti va, dai un'occhiata anche al nostro canale Telegram 👇",
-).strip()
-PROMO_APPEND_TEXT_EN = os.environ.get(
-    "PROMO_APPEND_TEXT_EN",
     "P.S. feel free to check out our Telegram channel too 👇",
-).strip()
+    "P.S. se ti va, dai un'occhiata anche al nostro canale Telegram 👇",
+)
 # Written into the conversation history after the button is attached, so the
 # AI knows it went out and can answer truthfully if asked about it.
 # In English on purpose: it sits inside the conversation history, and an
@@ -255,10 +268,11 @@ PROMO_HISTORY_NOTE = (
     "person sees them; you did not write them.]"
 )
 # Text sent with the button when the owner uses /promo manually.
-PROMO_MANUAL_TEXT = os.environ.get(
+PROMO_MANUAL_TEXT = _customer_texts(
     "PROMO_MANUAL_TEXT",
+    "📢 Here's the link to our Telegram channel, join from here 👇",
     "📢 Ti lascio il link al nostro canale Telegram, entra da qui 👇",
-).strip()
+)
 
 # ── human handoff / takeover ───────────────────────────────────────────
 # After the owner steps into a conversation — either by typing directly in the
@@ -269,12 +283,13 @@ HANDOFF_PAUSE_SECONDS = int(os.environ.get("HANDOFF_PAUSE_SECONDS", "1800"))
 
 # Fallback reply sent to the customer when a forward is triggered but the AI
 # did not produce a reassuring message (e.g. away mode + explicit request).
-DEFAULT_FORWARD_ACK = (
-    "Perfetto, inoltro subito il tuo messaggio. Ti risponderà a breve. 🙏"
+FORWARD_ACK = _customer_texts(
+    "FORWARD_ACK",
+    "Got it, I'm passing your message on right away. You'll hear back soon. 🙏",
+    "Perfetto, inoltro subito il tuo messaggio. Ti risponderà a breve. 🙏",
 )
-DEFAULT_FORWARD_ACK_EN = (
-    "Got it, I'm passing your message on right away. You'll hear back soon. 🙏"
-)
+# Sent when the AI backend fails, so the customer still gets an answer.
+AI_FAILURE_ACK = _customer_texts("AI_FAILURE_ACK", "One moment…", "Un attimo…")
 
 # ── knowledge base / FAQ ───────────────────────────────────────────────
 # Text the owner sets with /kb (business hours, address, price list, FAQ…).

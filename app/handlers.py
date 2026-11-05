@@ -10,14 +10,15 @@ from telegram.ext import ContextTypes
 
 import ai
 import transcribe
-from config import (DEFAULT_AWAY_MESSAGE, DEFAULT_FORWARD_ACK,
-                    DEFAULT_FORWARD_ACK_EN, DEFAULT_SYSTEM_PROMPT, FORWARD_COOLDOWN_SECONDS,
+from config import (AI_FAILURE_ACK, DEFAULT_AWAY_MESSAGE, FORWARD_ACK,
+                    DEFAULT_SYSTEM_PROMPT, FORWARD_COOLDOWN_SECONDS,
                     HANDOFF_PAUSE_SECONDS, KB_PREAMBLE, MAX_INPUT_CHARS,
                     OWNER_USER_ID, PROMO_ALREADY_NOTE, PROMO_BUTTON_TEXT,
-                    PROMO_APPEND_TEXT, PROMO_APPEND_TEXT_EN, PROMO_CHANNEL_URL,
+                    PROMO_APPEND_TEXT, PROMO_CHANNEL_URL,
                     PROMO_COOLDOWN_DAYS, PROMO_HISTORY_NOTE, PROMO_INSTRUCTIONS,
                     PROMO_MANUAL_TEXT, REPLY_COOLDOWN_SECONDS, SENDER_CONTEXT,
-                    VOICE_MAX_SECONDS, WHISPER_ENABLED)
+                    UI_LANGUAGE, VOICE_MAX_SECONDS, WHISPER_ENABLED)
+from i18n import t
 from state import (bump_stat, clear_takeover, in_schedule, is_paused,
                    load_state, lookup_forward, mark_forward, mark_promo,
                    mark_reply, mark_takeover, remember_forward, update_state)
@@ -103,17 +104,14 @@ async def on_business_connection(update: Update, context: ContextTypes.DEFAULT_T
                  conn.id, conn.user.id, can_reply)
         await context.bot.send_message(
             OWNER_USER_ID,
-            f"✅ Bot connected to your business account.\n"
-            f"connection_id: <code>{conn.id}</code>\n"
-            f"can_reply: <b>{can_reply}</b>\n"
-            f"Current mode: <b>{load_state()['mode']}</b>",
+            t("conn_on", id=conn.id, can_reply=can_reply, mode=load_state()["mode"]),
             parse_mode="HTML",
         )
     else:
         update_state(connection_id=None, can_reply=False)
         log.info("business connection DISABLED id=%s", conn.id)
         try:
-            await context.bot.send_message(OWNER_USER_ID, "⚠️ Bot disconnected from business account.")
+            await context.bot.send_message(OWNER_USER_ID, t("conn_off"))
         except Exception:
             pass
 
@@ -130,17 +128,13 @@ def _clip(text: str, limit: int = 1500) -> str:
 async def _forward_to_owner(context, msg, customer_text: str, customer_reply: str, reason: str) -> None:
     """Notify the owner about an important customer message."""
     user = msg.from_user
-    name = user.full_name if user else "Sconosciuto"
+    name = user.full_name if user else t("unknown_sender")
     uname = f"@{user.username}" if user and getattr(user, "username", None) else "—"
-    voice_tag = " 🎙️ (vocale trascritto)" if msg.voice else ""
-    notice = (
-        f"📨 <b>Messaggio da inoltrare</b> — {reason}\n"
-        f"Da: <b>{html.escape(name)}</b> ({html.escape(uname)})\n"
-        f"chat_id: <code>{msg.chat.id}</code>\n\n"
-        f"💬 <i>Cliente:</i>{voice_tag}\n{html.escape(_clip(customer_text))}\n\n"
-        f"🤖 <i>Risposta del bot:</i>\n{html.escape(_clip(customer_reply))}\n\n"
-        f"↩️ <i>Rispondi a questo messaggio per scrivere al cliente.</i>"
-    )
+    notice = t("notice", reason=reason, name=html.escape(name),
+               uname=html.escape(uname), chat_id=msg.chat.id,
+               voice=t("voice_tag") if msg.voice else "",
+               text=html.escape(_clip(customer_text)),
+               reply=html.escape(_clip(customer_reply)))
     sent = await context.bot.send_message(OWNER_USER_ID, notice, parse_mode="HTML")
     # Remember which customer this notice belongs to, so a reply to it can be
     # relayed back to the right conversation.
@@ -211,18 +205,20 @@ def _typing_keepalive(context, conn_id: str, chat_id: int) -> asyncio.Task:
     return asyncio.create_task(loop())
 
 
-def _speaks_italian(chat_id: int) -> bool:
-    """Whether the bot's own fixed lines should be Italian for this chat: yes
-    unless the AI has replied in another language there (then English)."""
-    return ai.last_language(chat_id) in ("", "it")
+def _customer_lang(chat_id: int) -> str:
+    """Language of the bot's own fixed lines in this chat: the one the AI last
+    replied in there, else the UI language. Italian chats get the Italian
+    texts, every other language the English ones."""
+    lang = ai.last_language(chat_id) or UI_LANGUAGE
+    return "it" if lang == "it" else "en"
 
 
 def _forward_ack(chat_id: int) -> str:
-    return DEFAULT_FORWARD_ACK if _speaks_italian(chat_id) else DEFAULT_FORWARD_ACK_EN
+    return FORWARD_ACK[_customer_lang(chat_id)]
 
 
 def _promo_line(chat_id: int) -> str:
-    return PROMO_APPEND_TEXT if _speaks_italian(chat_id) else PROMO_APPEND_TEXT_EN
+    return PROMO_APPEND_TEXT[_customer_lang(chat_id)]
 
 
 def _promo_link() -> tuple | None:
@@ -326,9 +322,9 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     # we acknowledge the customer and hand the attachment off to the owner (who
     # sees the media directly in their own business chat).
     if not msg.text and not msg.voice:
-        media = "una foto" if msg.photo else "un documento"
-        await _ack_and_handoff(context, state, msg, chat_id, f"[{media}]",
-                               "allegato dal cliente")
+        media = t("media_photo") if msg.photo else t("media_document")
+        await _ack_and_handoff(context, state, msg, chat_id, media,
+                               t("reason_attachment"))
         return
 
     # Resolve the incoming text. Voice notes are transcribed locally with
@@ -348,8 +344,7 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             log.info("voice too long (%ds > %ds) — handing off", duration, VOICE_MAX_SECONDS)
             await _ack_and_handoff(
                 context, state, msg, chat_id,
-                f"[vocale di {duration}s — troppo lungo per la trascrizione]",
-                "vocale troppo lungo")
+                t("voice_long_text", secs=duration), t("reason_voice_long"))
             return
         try:
             tg_file = await context.bot.get_file(msg.voice.file_id)
@@ -386,7 +381,7 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         if kb:
             system_prompt = system_prompt + KB_PREAMBLE + kb
         # Tell the AI who it's talking to (Telegram profile), so it never asks
-        # for the name and can spot joke answers ("mi chiamo stocazzo").
+        # for the name and can spot joke answers (an obviously fake name).
         sender = msg.from_user
         if sender:
             uname = f" (@{sender.username})" if getattr(sender, "username", None) else ""
@@ -402,7 +397,7 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             # AI failure: never fall back to away_message (which is the explicit
             # "I'm offline" text). Use a short generic ack so the bot still replies.
             log.exception("AI fail, sending short ack: %s", e)
-            reply = "Un attimo…"
+            reply = AI_FAILURE_ACK[_customer_lang(chat_id)]
             use_ai = False
             promo_allowed = False  # don't bolt a channel pitch onto an error ack
         finally:
@@ -449,7 +444,7 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if should_forward:
         last_fwd = state["last_forward_at"].get(str(chat_id), 0)
         if wants_human or time.time() - last_fwd >= FORWARD_COOLDOWN_SECONDS:
-            reason = "richiesta esplicita del cliente" if wants_human else "il bot non sa rispondere"
+            reason = t("reason_human") if wants_human else t("reason_ai")
             try:
                 await _forward_to_owner(context, msg, incoming_text, reply, reason)
                 mark_forward(chat_id)
@@ -458,57 +453,54 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                 log.exception("forward to owner failed: %s", e)
 
 
-# ---- owner control panel (inline menu, Italian) ----
+# ---- owner control panel (inline menu, language from UI_LANGUAGE) ----
 
 # Free-text settings the owner can change from the menu: pressing a button parks
 # the field here, and the next DM the owner sends becomes its new value.
 # In-memory on purpose — a restart simply cancels a half-finished edit.
 _pending_input: dict[int, str] = {}
 
-MODE_LABELS = {
-    "off": "🔴 Spento",
-    "away": "💤 Assenza",
-    "ai": "🤖 AI",
-    "auto": "⏰ Automatico",
-}
-MODE_DESCR = {
-    "off": "il bot ignora tutti i messaggi",
-    "away": "risponde solo col messaggio di assenza",
-    "ai": "risponde sempre con l'AI",
-    "auto": "AI negli orari impostati, assenza fuori",
-}
+
+def _mode_label(mode: str) -> str:
+    return t(f"mode_{mode}") if mode in MODES else mode
+
+
+def _hours(s: dict) -> str:
+    sched = s.get("schedule")
+    return f"{sched['start']}–{sched['end']}" if sched else t("always_on")
 
 
 def _menu_text(s: dict) -> str:
-    sched = s.get("schedule")
-    sched_str = f"{sched['start']}–{sched['end']}" if sched else "sempre attivo"
     kb = s.get("knowledge", "")
-    kb_str = f"impostata ({len(kb)} caratteri)" if kb else "vuota"
     paused = [c for c in s.get("human_takeover_at", {}) if is_paused(s, int(c))]
     mode = s.get("mode", "auto")
     lines = [
-        "🤖 <b>Segretario — pannello di controllo</b>\n",
-        f"Modalità: <b>{html.escape(MODE_LABELS.get(mode, mode))}</b> "
-        f"({MODE_DESCR.get(mode, '')})",
-        f"Orari AI: <b>{sched_str}</b>",
-        f"Inoltro messaggi: <b>{'attivo' if s.get('forward_enabled', True) else 'disattivo'}</b>",
-        f"Info attività: <b>{kb_str}</b>",
+        t("menu_title"),
+        t("menu_mode", label=html.escape(_mode_label(mode)),
+          descr=t(f"descr_{mode}") if mode in MODES else ""),
+        t("menu_hours", hours=_hours(s)),
+        t("menu_fwd", state=t("on") if s.get("forward_enabled", True) else t("off")),
+        t("menu_kb", state=t("kb_set", n=len(kb)) if kb else t("kb_empty")),
     ]
     if not s.get("connection_id"):
-        lines.append("\n⚠️ <b>Nessuna connessione business attiva.</b>")
+        lines.append("\n" + t("menu_no_conn"))
     elif not s.get("can_reply"):
-        lines.append("\n⚠️ <b>Manca il permesso di rispondere.</b>")
+        lines.append("\n" + t("menu_no_reply"))
     if paused:
-        lines.append(f"\n⏸️ In pausa su {len(paused)} chat")
-    lines.append("\nScegli cosa fare 👇")
+        lines.append("\n" + t("menu_paused", n=len(paused)))
+    lines.append("\n" + t("menu_choose"))
     return "\n".join(lines)
+
+
+def _btn(key: str, data: str, **kw) -> InlineKeyboardButton:
+    return InlineKeyboardButton(t(key, **kw), callback_data=data)
 
 
 def _menu_markup(s: dict) -> InlineKeyboardMarkup:
     mode = s.get("mode", "auto")
 
     def mode_btn(key: str) -> InlineKeyboardButton:
-        label = MODE_LABELS[key]
+        label = _mode_label(key)
         return InlineKeyboardButton(
             f"✅ {label}" if mode == key else label, callback_data=f"m:mode:{key}")
 
@@ -516,39 +508,25 @@ def _menu_markup(s: dict) -> InlineKeyboardMarkup:
     rows = [
         [mode_btn("ai"), mode_btn("auto")],
         [mode_btn("away"), mode_btn("off")],
-        [
-            InlineKeyboardButton("📊 Statistiche", callback_data="m:stats"),
-            InlineKeyboardButton(
-                f"📨 Inoltro: {'ON' if fwd_on else 'OFF'}", callback_data="m:fwd"),
-        ],
-        [
-            InlineKeyboardButton("✍️ Messaggio assenza", callback_data="m:set:away"),
-            InlineKeyboardButton("🧠 Personalità AI", callback_data="m:set:prompt"),
-        ],
-        [
-            InlineKeyboardButton("📚 Info attività", callback_data="m:kb"),
-            InlineKeyboardButton("🕐 Orari AI", callback_data="m:sched"),
-        ],
-        [
-            InlineKeyboardButton("▶️ Riattiva ovunque", callback_data="m:resume"),
-            InlineKeyboardButton("🗑 Cancella memoria", callback_data="m:reset"),
-        ],
+        [_btn("btn_stats", "m:stats"),
+         _btn("btn_fwd", "m:fwd", state="ON" if fwd_on else "OFF")],
+        [_btn("btn_away", "m:set:away"), _btn("btn_prompt", "m:set:prompt")],
+        [_btn("btn_kb", "m:kb"), _btn("btn_sched", "m:sched")],
+        [_btn("btn_resume_all", "m:resume"), _btn("btn_reset", "m:reset")],
     ]
     if PROMO_CHANNEL_URL:
-        rows.append([
-            InlineKeyboardButton("📢 Invia invito al canale", callback_data="m:promo"),
-            InlineKeyboardButton("♻️ Ripristina default", callback_data="m:defaults"),
-        ])
+        rows.append([_btn("btn_promo", "m:promo"), _btn("btn_defaults", "m:defaults")])
     else:
-        rows.append([
-            InlineKeyboardButton("♻️ Ripristina default", callback_data="m:defaults")])
+        rows.append([_btn("btn_defaults", "m:defaults")])
     return InlineKeyboardMarkup(rows)
 
 
-_BACK_MARKUP = InlineKeyboardMarkup(
-    [[InlineKeyboardButton("⬅️ Torna al menu", callback_data="m:home")]])
-_CANCEL_MARKUP = InlineKeyboardMarkup(
-    [[InlineKeyboardButton("❌ Annulla", callback_data="m:home")]])
+def _back_markup() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([[_btn("btn_back", "m:home")]])
+
+
+def _cancel_markup() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([[_btn("btn_cancel", "m:home")]])
 
 
 async def _show_menu(update: Update, edit: bool = False) -> None:
@@ -573,24 +551,9 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await _show_menu(update)
 
 
-# What each free-text edit asks for, and how to apply the answer.
-_PROMPTS = {
-    "away": ("✍️ <b>Messaggio di assenza</b>\n\nScrivimi il nuovo testo che i "
-             "clienti riceveranno quando il bot è in modalità Assenza.\n\n"
-             "Attuale:\n<i>{cur}</i>"),
-    "prompt": ("🧠 <b>Personalità dell'AI</b>\n\nScrivimi le nuove istruzioni: "
-               "come deve comportarsi e che tono usare.\n\n"
-               "⚠️ Cambiandola azzero la memoria delle conversazioni.\n\n"
-               "Attuale:\n<i>{cur}</i>"),
-    "kb": ("📚 <b>Info sull'attività</b>\n\nScrivimi i fatti che l'AI deve "
-           "conoscere (orari, indirizzo, prezzi, FAQ…). Risponderà solo in base "
-           "a questi, senza inventare.\n\nAttuale:\n<i>{cur}</i>"),
-    "sched": ("🕐 <b>Orari AI</b> (modalità Automatico)\n\nScrivimi la fascia "
-              "oraria nel formato <code>09:00-19:00</code>.\n\nAttuale: <b>{cur}</b>"),
-    "promo": ("📢 <b>Invia invito al canale</b>\n\nScrivimi il <code>chat_id</code> "
-              "del cliente a cui mandare l'invito.\n\nLo trovi nelle notifiche "
-              "“📨 Messaggio da inoltrare”."),
-}
+# What each free-text edit asks for: i18n key of the prompt per field.
+_PROMPTS = {"away": "p_away", "prompt": "p_prompt", "kb": "p_kb",
+            "sched": "p_sched", "promo": "p_promo"}
 
 
 async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -617,7 +580,7 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         mode = data.split(":")[2]
         if mode in MODES:
             update_state(mode=mode)
-            await q.answer(f"Modalità: {MODE_LABELS[mode]}")
+            await q.answer(t("ans_mode", label=_mode_label(mode)))
         await _show_menu(update, edit=True)
         return
 
@@ -625,7 +588,7 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if data == "m:fwd":
         new = not s.get("forward_enabled", True)
         update_state(forward_enabled=new)
-        await q.answer("Inoltro attivato" if new else "Inoltro disattivato")
+        await q.answer(t("ans_fwd_on") if new else t("ans_fwd_off"))
         await _show_menu(update, edit=True)
         return
 
@@ -634,59 +597,49 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await q.answer()
         st = s.get("stats", {})
         paused = [c for c in s.get("human_takeover_at", {}) if is_paused(s, int(c))]
-        txt = (
-            "📊 <b>Statistiche</b>\n\n"
-            f"🤖 Risposte AI: <b>{st.get('ai_replies', 0)}</b>\n"
-            f"💤 Risposte assenza: <b>{st.get('away_replies', 0)}</b>\n"
-            f"📨 Messaggi inoltrati: <b>{st.get('forwarded', 0)}</b>\n"
-            f"↩️ Risposte tue inoltrate: <b>{st.get('relayed', 0)}</b>\n"
-            f"📢 Canale proposto: <b>{st.get('promoted', 0)}</b> volte\n"
-            f"⏸️ Ignorati (pausa): <b>{st.get('paused', 0)}</b>\n"
-            f"⏭️ Saltati: <b>{st.get('skipped', 0)}</b>\n\n"
-            f"Chat in pausa adesso: <b>{len(paused)}</b>\n"
-            f"Connessione: <b>{'attiva' if s.get('connection_id') else 'assente'}</b>"
-        )
-        await q.edit_message_text(txt, parse_mode="HTML", reply_markup=_BACK_MARKUP)
+        txt = t("stats", ai=st.get("ai_replies", 0), away=st.get("away_replies", 0),
+                fwd=st.get("forwarded", 0), rel=st.get("relayed", 0),
+                promo=st.get("promoted", 0), paused=st.get("paused", 0),
+                skipped=st.get("skipped", 0), paused_now=len(paused),
+                conn=t("conn_active") if s.get("connection_id") else t("conn_missing"))
+        await q.edit_message_text(txt, parse_mode="HTML", reply_markup=_back_markup())
         return
 
     # ---- knowledge base: view / edit / clear ----
     if data == "m:kb":
         await q.answer()
         kb = s.get("knowledge", "")
-        body = html.escape(kb[:2500]) if kb else "<i>(vuota)</i>"
-        rows = [[InlineKeyboardButton("✏️ Modifica", callback_data="m:set:kb")]]
+        body = html.escape(kb[:2500]) if kb else t("kb_empty_i")
+        rows = [[_btn("btn_edit", "m:set:kb")]]
         if kb:
-            rows.append([InlineKeyboardButton("🗑 Svuota", callback_data="m:kb:clear")])
-        rows.append([InlineKeyboardButton("⬅️ Torna al menu", callback_data="m:home")])
+            rows.append([_btn("btn_clear", "m:kb:clear")])
+        rows.append([_btn("btn_back", "m:home")])
         await q.edit_message_text(
-            f"📚 <b>Info sull'attività</b>\n\n{body}",
+            t("kb_view", body=body),
             parse_mode="HTML", reply_markup=InlineKeyboardMarkup(rows))
         return
 
     if data == "m:kb:clear":
         update_state(knowledge="")
-        await q.answer("Info svuotate")
+        await q.answer(t("ans_kb_cleared"))
         await _show_menu(update, edit=True)
         return
 
     # ---- schedule: view / edit / disable ----
     if data == "m:sched":
         await q.answer()
-        sched = s.get("schedule")
-        cur = f"{sched['start']}–{sched['end']}" if sched else "sempre attivo"
-        rows = [[InlineKeyboardButton("✏️ Imposta fascia", callback_data="m:set:sched")]]
-        if sched:
-            rows.append([InlineKeyboardButton("♾ Sempre attivo", callback_data="m:sched:off")])
-        rows.append([InlineKeyboardButton("⬅️ Torna al menu", callback_data="m:home")])
+        rows = [[_btn("btn_set_hours", "m:set:sched")]]
+        if s.get("schedule"):
+            rows.append([_btn("btn_always", "m:sched:off")])
+        rows.append([_btn("btn_back", "m:home")])
         await q.edit_message_text(
-            f"🕐 <b>Orari AI</b> (modalità Automatico)\n\nAttuale: <b>{cur}</b>\n\n"
-            "Fuori da questa fascia il bot manda il messaggio di assenza.",
+            t("sched_view", cur=_hours(s)),
             parse_mode="HTML", reply_markup=InlineKeyboardMarkup(rows))
         return
 
     if data == "m:sched:off":
         update_state(schedule=None)
-        await q.answer("AI sempre attiva in Automatico")
+        await q.answer(t("ans_sched_off"))
         await _show_menu(update, edit=True)
         return
 
@@ -698,20 +651,19 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         cur = {
             "away": s.get("away_message", ""),
             "prompt": s.get("system_prompt", ""),
-            "kb": s.get("knowledge", "") or "(vuota)",
-            "sched": (f"{s['schedule']['start']}–{s['schedule']['end']}"
-                      if s.get("schedule") else "sempre attivo"),
+            "kb": s.get("knowledge", "") or t("empty_paren"),
+            "sched": _hours(s),
             "promo": "",
         }.get(field, "")
         await q.edit_message_text(
-            _PROMPTS[field].format(cur=html.escape(str(cur)[:400])),
-            parse_mode="HTML", reply_markup=_CANCEL_MARKUP)
+            t(_PROMPTS[field], cur=html.escape(str(cur)[:400])),
+            parse_mode="HTML", reply_markup=_cancel_markup())
         return
 
     # ---- resume everywhere ----
     if data == "m:resume":
         n = clear_takeover(None)
-        await q.answer(f"Bot riattivato su {n} chat")
+        await q.answer(t("ans_resumed", n=n))
         await _show_menu(update, edit=True)
         return
 
@@ -719,32 +671,26 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if data == "m:reset":
         await q.answer()
         await q.edit_message_text(
-            "🗑 <b>Cancellare la memoria delle conversazioni?</b>\n\n"
-            "Il bot dimenticherà i messaggi precedenti di tutti i clienti. "
-            "Impostazioni e statistiche restano.",
+            t("confirm_reset"),
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("✅ Sì, cancella", callback_data="m:reset:ok"),
-                InlineKeyboardButton("❌ Annulla", callback_data="m:home"),
+                _btn("btn_yes_clear", "m:reset:ok"), _btn("btn_cancel", "m:home"),
             ]]))
         return
 
     if data == "m:reset:ok":
         ai.reset_history()
-        await q.answer("Memoria cancellata")
+        await q.answer(t("ans_reset"))
         await _show_menu(update, edit=True)
         return
 
     if data == "m:defaults":
         await q.answer()
         await q.edit_message_text(
-            "♻️ <b>Ripristinare i valori di default?</b>\n\n"
-            "Messaggio di assenza e personalità dell'AI tornano come all'inizio, "
-            "e la memoria viene azzerata. Le info sull'attività restano.",
+            t("confirm_defaults"),
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("✅ Sì, ripristina", callback_data="m:defaults:ok"),
-                InlineKeyboardButton("❌ Annulla", callback_data="m:home"),
+                _btn("btn_yes_restore", "m:defaults:ok"), _btn("btn_cancel", "m:home"),
             ]]))
         return
 
@@ -752,7 +698,7 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         update_state(away_message=DEFAULT_AWAY_MESSAGE,
                      system_prompt=DEFAULT_SYSTEM_PROMPT)
         ai.reset_history()
-        await q.answer("Default ripristinati")
+        await q.answer(t("ans_defaults"))
         await _show_menu(update, edit=True)
         return
 
@@ -760,8 +706,8 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if data == "m:promo":
         await q.answer()
         _pending_input[uid] = "promo"
-        await q.edit_message_text(_PROMPTS["promo"], parse_mode="HTML",
-                                  reply_markup=_CANCEL_MARKUP)
+        await q.edit_message_text(t("p_promo"), parse_mode="HTML",
+                                  reply_markup=_cancel_markup())
         return
 
     await q.answer()
@@ -773,32 +719,29 @@ async def _apply_pending(update: Update, context: ContextTypes.DEFAULT_TYPE,
     msg = update.message
     if field == "away":
         update_state(away_message=text)
-        await msg.reply_text("✅ Messaggio di assenza aggiornato.")
+        await msg.reply_text(t("ok_away"))
     elif field == "prompt":
         update_state(system_prompt=text)
         ai.reset_history()
-        await msg.reply_text("✅ Personalità aggiornata (memoria azzerata).")
+        await msg.reply_text(t("ok_prompt"))
     elif field == "kb":
         update_state(knowledge=text)
-        await msg.reply_text(f"✅ Info aggiornate ({len(text)} caratteri). "
-                             "L'AI le userà dal prossimo messaggio.")
+        await msg.reply_text(t("ok_kb", n=len(text)))
     elif field == "sched":
         m = TIME_RE.match(text.strip())
         if not m:
             _pending_input[update.effective_user.id] = "sched"
-            await msg.reply_text("⚠️ Formato non valido. Scrivi ad esempio "
-                                 "09:00-19:00", reply_markup=_CANCEL_MARKUP)
+            await msg.reply_text(t("bad_hours"), reply_markup=_cancel_markup())
             return
         start, end = f"{m.group(1)}:{m.group(2)}", f"{m.group(3)}:{m.group(4)}"
         update_state(schedule={"start": start, "end": end})
-        await msg.reply_text(f"✅ Orari AI: {start}–{end}")
+        await msg.reply_text(t("ok_hours", start=start, end=end))
     elif field == "promo":
         try:
             chat_id = int(text.strip())
         except ValueError:
             _pending_input[update.effective_user.id] = "promo"
-            await msg.reply_text("⚠️ Serve un chat_id numerico. Riprova.",
-                                 reply_markup=_CANCEL_MARKUP)
+            await msg.reply_text(t("bad_chat_id"), reply_markup=_cancel_markup())
             return
         await _send_promo(update, context, chat_id)
         return
@@ -810,23 +753,23 @@ async def _send_promo(update: Update, context: ContextTypes.DEFAULT_TYPE,
     """Send the channel invite (text + button) to one customer chat."""
     msg = update.effective_message
     if not PROMO_CHANNEL_URL:
-        await msg.reply_text("⚠️ Canale non configurato (PROMO_CHANNEL_URL).")
+        await msg.reply_text(t("promo_off"))
         return
     conn = load_state().get("connection_id")
     if not conn:
-        await msg.reply_text("⚠️ Nessuna connessione business attiva.")
+        await msg.reply_text(t("no_conn"))
         return
     markup = InlineKeyboardMarkup([[
         InlineKeyboardButton(PROMO_BUTTON_TEXT, url=PROMO_CHANNEL_URL)]])
-    if await _send_business(context, conn, chat_id, PROMO_MANUAL_TEXT,
+    if await _send_business(context, conn, chat_id, PROMO_MANUAL_TEXT[_customer_lang(chat_id)],
                             reply_markup=markup, link_fallback=_promo_link()):
         mark_promo(chat_id)
         bump_stat("promoted")
         ai.note_attachment(chat_id, PROMO_HISTORY_NOTE.format(
             button=PROMO_BUTTON_TEXT))
-        await msg.reply_text(f"✅ Invito al canale inviato alla chat {chat_id}")
+        await msg.reply_text(t("promo_sent", chat_id=chat_id))
     else:
-        await msg.reply_text("⚠️ Invio fallito. Riprova.")
+        await msg.reply_text(t("send_failed"))
 
 
 # ---- owner DM: relay a reply back to the customer ----
@@ -842,7 +785,7 @@ async def on_owner_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
     uid = update.effective_user.id
 
-    # 1) Reply to a "📨 Messaggio da inoltrare" notice → relay to the customer.
+    # 1) Reply to a forwarded notice → relay to the customer.
     reply_to = msg.reply_to_message
     chat_id = lookup_forward(reply_to.message_id) if reply_to else None
     if chat_id is not None:
@@ -850,19 +793,16 @@ async def on_owner_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         state = load_state()
         conn = state.get("connection_id")
         if not conn:
-            await msg.reply_text("⚠️ Nessuna connessione business attiva.")
+            await msg.reply_text(t("no_conn"))
             return
         if await _send_business(context, conn, chat_id, msg.text):
             mark_takeover(chat_id)  # the human is handling this chat now
             bump_stat("relayed")
             await msg.reply_text(
-                "✅ Inviato al cliente. Il bot resta in pausa su questa chat.",
-                reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("▶️ Riattiva il bot qui",
-                                         callback_data="m:resume"),
-                ]]))
+                t("relayed"),
+                reply_markup=InlineKeyboardMarkup([[_btn("btn_resume_here", "m:resume")]]))
         else:
-            await msg.reply_text("⚠️ Invio al cliente fallito. Riprova.")
+            await msg.reply_text(t("relay_failed"))
         return
 
     # 2) A menu button parked a setting → this message is its new value.
@@ -873,9 +813,7 @@ async def on_owner_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     # 3) Reply to something unrelated, or a plain message → show the panel.
     if reply_to is not None:
-        await msg.reply_text(
-            "Non trovo la conversazione collegata a quel messaggio. "
-            "Fai reply direttamente sulla notifica “📨 Messaggio da inoltrare”.")
+        await msg.reply_text(t("reply_unknown"))
         return
     await _show_menu(update)
 
@@ -886,13 +824,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not _is_owner(update):
         return
     _pending_input.pop(update.effective_user.id, None)
-    await update.message.reply_html(
-        "👋 Ciao! Sono il tuo <b>Segretario</b>: rispondo io ai messaggi "
-        "Telegram quando non ci sei.\n\n"
-        "💡 Per rispondere a un cliente, fai <b>reply</b> alla notifica "
-        "“📨 Messaggio da inoltrare”: il tuo testo gli arriva direttamente.\n\n"
-        "Riapri questo pannello quando vuoi con /menu."
-    )
+    await update.message.reply_html(t("welcome"))
     await _show_menu(update)
 
 
@@ -935,7 +867,7 @@ async def cmd_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(f"Invalid mode. Use one of: {sorted(MODES)}")
         return
     update_state(mode=m)
-    await update.message.reply_text(f"✅ Modalità: {MODE_LABELS.get(m, m)}")
+    await update.message.reply_text(t("ok_mode", label=_mode_label(m)))
 
 
 async def cmd_away(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -946,7 +878,7 @@ async def cmd_away(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(f"Usage: /away <message>\nCurrent:\n{load_state()['away_message']}")
         return
     update_state(away_message=text)
-    await update.message.reply_text("✅ Messaggio di assenza aggiornato.")
+    await update.message.reply_text(t("ok_away"))
 
 
 async def cmd_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -959,7 +891,7 @@ async def cmd_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     update_state(system_prompt=text)
     # Previous history was generated with the old prompt — wipe it
     ai.reset_history()
-    await update.message.reply_text("✅ Personalità aggiornata (memoria azzerata).")
+    await update.message.reply_text(t("ok_prompt"))
 
 
 async def cmd_kb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -983,13 +915,10 @@ async def cmd_kb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     if text.lower() == "clear":
         update_state(knowledge="")
-        await update.message.reply_text("✅ Info sull'attività svuotate.")
+        await update.message.reply_text(t("ok_kb_cleared"))
         return
     update_state(knowledge=text)
-    await update.message.reply_text(
-        f"✅ knowledge base updated ({len(text)} chars). The AI will use it from "
-        "the next message."
-    )
+    await update.message.reply_text(t("ok_kb", n=len(text)))
 
 
 async def cmd_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1031,7 +960,7 @@ async def cmd_forward(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text("Usage: /forward on|off")
         return
     update_state(forward_enabled=(arg == "on"))
-    await update.message.reply_text(f"✅ Inoltro messaggi: {'attivo' if arg == 'on' else 'disattivo'}")
+    await update.message.reply_text(t("ok_fwd", state=t("on") if arg == "on" else t("off")))
 
 
 async def cmd_pause(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1040,10 +969,7 @@ async def cmd_pause(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not _is_owner(update):
         return
     if not context.args:
-        await update.message.reply_text(
-            "Usage: /pause <chat_id>\n"
-            "You find the chat_id in the “📨 Messaggio da inoltrare” notices."
-        )
+        await update.message.reply_text(t("pause_usage"))
         return
     try:
         chat_id = int(context.args[0])
@@ -1064,7 +990,7 @@ async def cmd_promo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not _is_owner(update):
         return
     if not PROMO_CHANNEL_URL:
-        await update.message.reply_text("PROMO_CHANNEL_URL è vuoto — promo disattivata.")
+        await update.message.reply_text(t("promo_off"))
         return
     chat_id = None
     if context.args:
@@ -1076,28 +1002,25 @@ async def cmd_promo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     elif update.message.reply_to_message:
         chat_id = lookup_forward(update.message.reply_to_message.message_id)
     if chat_id is None:
-        await update.message.reply_text(
-            "Usage: /promo <chat_id> — oppure fai reply a una notifica "
-            "“📨 Messaggio da inoltrare” con /promo."
-        )
+        await update.message.reply_text(t("promo_usage"))
         return
     state = load_state()
     conn = state.get("connection_id")
     if not conn:
-        await update.message.reply_text("⚠️ Nessuna connessione business attiva.")
+        await update.message.reply_text(t("no_conn"))
         return
     markup = InlineKeyboardMarkup([[
         InlineKeyboardButton(PROMO_BUTTON_TEXT, url=PROMO_CHANNEL_URL)
     ]])
-    if await _send_business(context, conn, chat_id, PROMO_MANUAL_TEXT,
+    if await _send_business(context, conn, chat_id, PROMO_MANUAL_TEXT[_customer_lang(chat_id)],
                             reply_markup=markup, link_fallback=_promo_link()):
         mark_promo(chat_id)
         bump_stat("promoted")
         ai.note_attachment(chat_id, PROMO_HISTORY_NOTE.format(
             button=PROMO_BUTTON_TEXT))
-        await update.message.reply_text(f"✅ Invito al canale inviato a chat {chat_id}")
+        await update.message.reply_text(t("promo_sent", chat_id=chat_id))
     else:
-        await update.message.reply_text("⚠️ Invio fallito. Riprova.")
+        await update.message.reply_text(t("send_failed"))
 
 
 async def cmd_resume(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1135,4 +1058,4 @@ async def cmd_defaults(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     update_state(away_message=DEFAULT_AWAY_MESSAGE, system_prompt=DEFAULT_SYSTEM_PROMPT)
     ai.reset_history()
-    await update.message.reply_text("✅ Valori di default ripristinati.")
+    await update.message.reply_text(t("ok_defaults"))

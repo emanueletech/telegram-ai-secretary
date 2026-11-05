@@ -11,6 +11,7 @@ from telegram.ext import (Application, BusinessConnectionHandler,
 
 import handlers
 from config import BOT_TOKEN, HEALTH_FILE, LOG_DIR
+from i18n import t
 
 
 def setup_logging() -> None:
@@ -28,7 +29,7 @@ def setup_logging() -> None:
         fh.setFormatter(logging.Formatter(fmt))
         root.addHandler(fh)
     except OSError as e:
-        root.warning("file logging disabilitato (%s) — solo stdout", e)
+        root.warning("file logging disabled (%s) — stdout only", e)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
@@ -40,11 +41,11 @@ async def post_init(app: Application) -> None:
     """Register the command menu so the owner gets autocomplete in the bot DM.
     Best effort: a failure here must not stop the bot."""
     try:
-        # Il pannello a bottoni (/menu) copre tutto: teniamo la lista corta.
-        # I vecchi comandi restano attivi ma non vengono più pubblicizzati.
+        # The button panel (/menu) covers everything: keep the list short.
+        # The slash commands still work, they just aren't advertised.
         await app.bot.set_my_commands([
-            BotCommand("menu", "🎛 Pannello di controllo"),
-            BotCommand("start", "▶️ Avvia il bot"),
+            BotCommand("menu", t("cmd_menu")),
+            BotCommand("start", t("cmd_start")),
         ])
     except Exception:
         logging.getLogger(__name__).warning("set_my_commands failed", exc_info=True)
@@ -94,7 +95,7 @@ def main() -> None:
     # owner commands (DM al bot)
     app.add_handler(CommandHandler("start", handlers.cmd_start))
     app.add_handler(CommandHandler("help", handlers.cmd_start))
-    # pannello a bottoni — la via principale, con alias in italiano
+    # button panel — the main entry point (Italian aliases kept for habit)
     app.add_handler(CommandHandler(["menu", "impostazioni", "pannello"],
                                    handlers.cmd_menu))
     app.add_handler(CommandHandler("status", handlers.cmd_status))
