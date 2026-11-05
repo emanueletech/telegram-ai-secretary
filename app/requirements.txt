@@ -1,0 +1,10 @@
+# Telegram client. Pinned: an unpinned major could break handlers on rebuild.
+python-telegram-bot[job-queue]==22.8
+# "api" backend only (unused when CLAUDE_BACKEND=agent_sdk).
+anthropic==1.0.0
+# "agent_sdk" backend (Claude Max via OAuth). Ships its own Claude Code CLI in
+# claude_agent_sdk/_bundled/, which is what actually runs — keep it current so
+# it doesn't drift from the service it talks to.
+claude-agent-sdk==0.2.144
+# Local voice transcription (already the latest release).
+faster-whisper==1.2.1

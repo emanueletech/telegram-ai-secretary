@@ -1,0 +1,13 @@
+.env
+personal.env
+docker-compose.override.yml
+data/
+*.pyc
+__pycache__/
+.DS_Store
+*.swp
+.idea/
+.vscode/
+# per-deployment extensions live in a private overlay, not here
+app/extensions/*
+!app/extensions/_example.py

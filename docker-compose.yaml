@@ -1,0 +1,20 @@
+services:
+  telegram-ai-secretary:
+    build: .
+    image: telegram-ai-secretary:latest
+    container_name: telegram-ai-secretary
+    env_file:
+      - .env
+    environment:
+      - TZ=Europe/Rome
+      - IS_SANDBOX=1
+      - CLAUDE_CODE_DOCKER_RUN=1
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,sys,time; p='/app/data/health.txt'; sys.exit(0 if os.path.exists(p) and time.time()-os.path.getmtime(p)<300 else 1)"]
+      interval: 2m
+      timeout: 10s
+      start_period: 1m
+      retries: 3
