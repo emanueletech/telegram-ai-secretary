@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360">
+<defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .pop { transform-box: fill-box; transform-origin: center; }
+    .m1 { animation: m1 9s infinite; }
+    .ty { animation: ty 9s infinite; }
+    .r1 { animation: r1 9s infinite; }
+    .bt { animation: bt 9s infinite; }
+    .fw { animation: fw 9s infinite; }
+    .d1 { animation: dot 0.9s infinite; }
+    .d2 { animation: dot 0.9s 0.15s infinite; }
+    .d3 { animation: dot 0.9s 0.3s infinite; }
+    .cur { animation: cur 1s steps(1) infinite; }
+    @keyframes m1 { 0%, 4% { opacity: 0; transform: translateY(14px); } 8%, 92% { opacity: 1; transform: translateY(0); } 97%, 100% { opacity: 0; } }
+    @keyframes ty { 0%, 14% { opacity: 0; } 17%, 33% { opacity: 1; } 35%, 100% { opacity: 0; } }
+    @keyframes r1 { 0%, 34% { opacity: 0; transform: translateY(14px); } 38%, 92% { opacity: 1; transform: translateY(0); } 97%, 100% { opacity: 0; } }
+    @keyframes bt { 0%, 44% { opacity: 0; transform: scale(.9); } 48%, 92% { opacity: 1; transform: scale(1); } 97%, 100% { opacity: 0; } }
+    @keyframes fw { 0%, 58% { opacity: 0; transform: translateX(30px); } 63%, 92% { opacity: 1; transform: translateX(0); } 97%, 100% { opacity: 0; } }
+    @keyframes dot { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+    @keyframes cur { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+  </style>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#0b1520"/>
+    <stop offset="1" stop-color="#0f2233"/>
+  </linearGradient>
+  <linearGradient id="chat" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#17212b"/>
+    <stop offset="1" stop-color="#0e1621"/>
+  </linearGradient>
+  <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1.2" fill="#26a5e4" opacity=".10"/>
+  </pattern>
+</defs>
+
+<rect width="1200" height="360" rx="18" fill="url(#bg)"/>
+<rect width="1200" height="360" rx="18" fill="url(#grid)"/>
+<circle cx="1010" cy="40" r="230" fill="#26a5e4" opacity=".07"/>
+<circle cx="130" cy="380" r="200" fill="#2ee66b" opacity=".05"/>
+
+<!-- left: title -->
+<g transform="translate(64 0)">
+  <!-- paper-plane badge -->
+  <g transform="translate(0 70)">
+    <rect width="56" height="56" rx="16" fill="#26a5e4"/>
+    <path d="M13 28 L43 16 L37 42 L28 34 L24 41 L23 32 Z" fill="#fff"/>
+    <path d="M23 32 L37 21 L28 34 Z" fill="#b9e3f7"/>
+  </g>
+  <text x="74" y="96" font-size="15" font-weight="700" letter-spacing="4" fill="#2ee66b">TELEGRAM</text>
+  <text x="74" y="120" font-size="15" font-weight="600" letter-spacing="1.5" fill="#7f95a8">Chat Automation · self-hosted</text>
+
+  <text x="0" y="192" font-size="66" font-weight="800" fill="#ffffff" letter-spacing="-1">AI Secretary</text>
+  <text x="0" y="234" font-size="22" fill="#b4c3d0">Answers your DMs while you're busy,</text>
+  <text x="0" y="263" font-size="22" fill="#b4c3d0">and hands them to you when it matters.</text>
+
+  <g transform="translate(0 292)">
+    <rect width="132" height="30" rx="15" fill="#26a5e4" opacity=".16"/>
+    <text x="66" y="20" font-size="13" font-weight="700" fill="#5cc3f2" text-anchor="middle">🤖 AI replies</text>
+    <rect x="142" width="118" height="30" rx="15" fill="#2ee66b" opacity=".14"/>
+    <text x="201" y="20" font-size="13" font-weight="700" fill="#2ee66b" text-anchor="middle">📨 Handoff</text>
+    <rect x="270" width="132" height="30" rx="15" fill="#ffffff" opacity=".08"/>
+    <text x="336" y="20" font-size="13" font-weight="700" fill="#c9d6e0" text-anchor="middle">🎙️ Voice notes</text>
+  </g>
+</g>
+
+<!-- right: chat window -->
+<g transform="translate(676 26)">
+  <rect width="468" height="308" rx="20" fill="url(#chat)" stroke="#26a5e4" stroke-opacity=".35"/>
+  <!-- header -->
+  <rect width="468" height="54" rx="20" fill="#17212b"/>
+  <rect y="34" width="468" height="20" fill="#17212b"/>
+  <line x1="0" y1="54" x2="468" y2="54" stroke="#0b1520"/>
+  <circle cx="34" cy="27" r="16" fill="#e0794c"/>
+  <text x="34" y="33" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">A</text>
+  <text x="60" y="24" font-size="15" font-weight="700" fill="#fff">Alex</text>
+  <text x="60" y="42" font-size="12" fill="#7f95a8">last seen recently</text>
+  <circle cx="440" cy="27" r="3" fill="#7f95a8"/><circle cx="430" cy="27" r="3" fill="#7f95a8"/><circle cx="420" cy="27" r="3" fill="#7f95a8"/>
+
+  <!-- incoming -->
+  <g class="m1 pop">
+    <rect x="18" y="72" width="268" height="40" rx="14" fill="#182533"/>
+    <text x="34" y="97" font-size="15" fill="#e9eef2">hey! how much for a custom print? 👀</text>
+  </g>
+
+  <!-- typing -->
+  <g class="ty">
+    <rect x="384" y="128" width="66" height="34" rx="14" fill="#2b5278"/>
+    <circle class="d1" cx="403" cy="145" r="4" fill="#fff"/>
+    <circle class="d2" cx="417" cy="145" r="4" fill="#fff"/>
+    <circle class="d3" cx="431" cy="145" r="4" fill="#fff"/>
+  </g>
+
+  <!-- reply -->
+  <g class="r1 pop">
+    <rect x="128" y="126" width="322" height="70" rx="14" fill="#2b5278"/>
+    <text x="144" y="150" font-size="15" fill="#fff">Depends on size and material 🙂 I'm</text>
+    <text x="144" y="170" font-size="15" fill="#fff">passing this on, you'll get a quote soon!</text>
+    <text x="436" y="188" font-size="11" fill="#8fc1e8" text-anchor="end">Secretary, 23:55 ✓✓</text>
+  </g>
+
+  <!-- inline button -->
+  <g class="bt pop">
+    <rect x="128" y="202" width="322" height="36" rx="12" fill="#26a5e4" opacity=".28"/>
+    <text x="289" y="225" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">📢 Our channel</text>
+  </g>
+
+  <!-- forwarded chip -->
+  <g class="fw">
+    <rect x="18" y="254" width="432" height="38" rx="12" fill="#2ee66b" opacity=".12" stroke="#2ee66b" stroke-opacity=".5"/>
+    <text x="36" y="278" font-size="14" font-weight="700" fill="#2ee66b">📨 Forwarded to you</text>
+    <text x="434" y="278" class="mono" font-size="12" fill="#8fd9a8" text-anchor="end">reply → goes straight to Alex<tspan class="cur">▌</tspan></text>
+  </g>
+</g>
+</svg>

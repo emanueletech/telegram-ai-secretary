@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="560" viewBox="0 0 720 560">
+<defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .b { fill: #2b3a4a; }
+    .bl { font-size: 15px; font-weight: 600; fill: #ffffff; text-anchor: middle; }
+    .on { fill: #26a5e4; }
+    .hl { animation: hl 6s infinite; }
+    @keyframes hl { 0%, 40% { fill: #2b3a4a; } 45%, 60% { fill: #3d6b8f; } 65%, 100% { fill: #2b3a4a; } }
+  </style>
+  <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1.1" fill="#26a5e4" opacity=".10"/>
+  </pattern>
+</defs>
+
+<rect width="720" height="560" rx="20" fill="#0e1621"/>
+<rect width="720" height="560" rx="20" fill="url(#dots)"/>
+
+<!-- owner's command -->
+<rect x="590" y="22" width="108" height="38" rx="14" fill="#2b5278"/>
+<text x="644" y="47" font-size="15" fill="#fff" text-anchor="middle">/menu</text>
+
+<!-- bot message -->
+<rect x="22" y="76" width="676" height="196" rx="16" fill="#182533"/>
+<text x="42" y="108" font-size="16" font-weight="700" fill="#fff">🤖 Segretario — pannello di controllo</text>
+<text x="42" y="140" font-size="15" fill="#c9d6e0">Modalità: <tspan font-weight="700" fill="#fff">⏰ Automatico</tspan> (AI negli orari impostati, assenza fuori)</text>
+<text x="42" y="166" font-size="15" fill="#c9d6e0">Orari AI: <tspan font-weight="700" fill="#fff">09:00–19:00</tspan></text>
+<text x="42" y="192" font-size="15" fill="#c9d6e0">Inoltro messaggi: <tspan font-weight="700" fill="#fff">attivo</tspan></text>
+<text x="42" y="218" font-size="15" fill="#c9d6e0">Info attività: <tspan font-weight="700" fill="#fff">impostata (412 caratteri)</tspan></text>
+<text x="42" y="252" font-size="15" fill="#c9d6e0">Scegli cosa fare 👇</text>
+
+<!-- keyboard: 7 rows x 2 -->
+<g transform="translate(22 282)">
+  <rect class="b" x="0" y="0" width="334" height="32" rx="10"/><text class="bl" x="167" y="21">🤖 AI</text>
+  <rect class="on" x="342" y="0" width="334" height="32" rx="10"/><text class="bl" x="509" y="21">✅ ⏰ Automatico</text>
+
+  <rect class="b" x="0" y="38" width="334" height="32" rx="10"/><text class="bl" x="167" y="59">💤 Assenza</text>
+  <rect class="b" x="342" y="38" width="334" height="32" rx="10"/><text class="bl" x="509" y="59">🔴 Spento</text>
+
+  <rect class="b" x="0" y="76" width="334" height="32" rx="10"/><text class="bl" x="167" y="97">📊 Statistiche</text>
+  <rect class="b hl" x="342" y="76" width="334" height="32" rx="10"/><text class="bl" x="509" y="97">📨 Inoltro: ON</text>
+
+  <rect class="b" x="0" y="114" width="334" height="32" rx="10"/><text class="bl" x="167" y="135">✍️ Messaggio assenza</text>
+  <rect class="b" x="342" y="114" width="334" height="32" rx="10"/><text class="bl" x="509" y="135">🧠 Personalità AI</text>
+
+  <rect class="b" x="0" y="152" width="334" height="32" rx="10"/><text class="bl" x="167" y="173">📚 Info attività</text>
+  <rect class="b" x="342" y="152" width="334" height="32" rx="10"/><text class="bl" x="509" y="173">🕐 Orari AI</text>
+
+  <rect class="b" x="0" y="190" width="334" height="32" rx="10"/><text class="bl" x="167" y="211">▶️ Riattiva ovunque</text>
+  <rect class="b" x="342" y="190" width="334" height="32" rx="10"/><text class="bl" x="509" y="211">🗑 Cancella memoria</text>
+
+  <rect class="b" x="0" y="228" width="334" height="32" rx="10"/><text class="bl" x="167" y="249">📢 Invia invito al canale</text>
+  <rect class="b" x="342" y="228" width="334" height="32" rx="10"/><text class="bl" x="509" y="249">♻️ Ripristina default</text>
+</g>
+</svg>
