@@ -4,6 +4,7 @@ import re
 import time
 from collections import defaultdict, deque
 
+import credits
 from config import (AGENT_SDK_MODEL, ANTHROPIC_API_KEY, CLAUDE_BACKEND,
                     CLAUDE_CODE_OAUTH_TOKEN, CLAUDE_MAX_TOKENS, CLAUDE_MODEL,
                     CONVERSATION_INSTRUCTIONS, DATA_DIR, FORWARD_INSTRUCTIONS,
@@ -197,6 +198,32 @@ async def _reply_api(chat_id: int, user_text: str, system_prompt: str) -> tuple[
 
 # ─────────────────────────── backend: agent_sdk (Claude Max via OAuth) ───────────────────────────
 
+# "auto" backend: once the API key is rejected (credits used up or expired, key
+# revoked) this file makes every later reply use the subscription, restarts
+# included. Delete it to go back to the key.
+_API_KEY_OFF_FILE = DATA_DIR / "api_key_off"
+_switch_notice = False
+
+
+class _ApiKeyRejected(RuntimeError):
+    pass
+
+
+def _use_api_key() -> bool:
+    return CLAUDE_BACKEND == "auto" and bool(ANTHROPIC_API_KEY) and not _API_KEY_OFF_FILE.exists()
+
+
+def api_key_off() -> bool:
+    return _API_KEY_OFF_FILE.exists()
+
+
+def take_switch_notice() -> bool:
+    """True once, right after the switch to the subscription, so the owner hears about it."""
+    global _switch_notice
+    notice, _switch_notice = _switch_notice, False
+    return notice
+
+
 def _build_prompt_with_history(hist, user_text: str) -> str:
     # The SDK accepts a string prompt for one-shot query(); serialize history
     # in a simple format.
@@ -210,13 +237,14 @@ def _build_prompt_with_history(hist, user_text: str) -> str:
 
 
 async def _reply_agent_sdk(chat_id: int, user_text: str, system_prompt: str) -> tuple[str, bool, bool]:
-    if not CLAUDE_CODE_OAUTH_TOKEN:
+    use_key = _use_api_key()
+    if not use_key and not CLAUDE_CODE_OAUTH_TOKEN:
         raise RuntimeError(
             "CLAUDE_CODE_OAUTH_TOKEN missing. Generate it on your local Mac/PC "
             "with 'claude setup-token' and copy the value into .env"
         )
     from claude_agent_sdk import (AssistantMessage, ClaudeAgentOptions,
-                                  TextBlock, query)
+                                  ResultMessage, TextBlock, query)
 
     hist = _history[chat_id]
     prompt = _build_prompt_with_history(hist, user_text)
@@ -227,6 +255,8 @@ async def _reply_agent_sdk(chat_id: int, user_text: str, system_prompt: str) -> 
         allowed_tools=[],
         max_turns=1,
         model=AGENT_SDK_MODEL or None,  # None = Claude Code CLI default
+        # the CLI prefers the key over the OAuth token when both are set
+        env={"ANTHROPIC_API_KEY": ANTHROPIC_API_KEY} if use_key else {},
     )
 
     pieces: list[str] = []
@@ -234,13 +264,22 @@ async def _reply_agent_sdk(chat_id: int, user_text: str, system_prompt: str) -> 
     try:
         async for msg in query(prompt=prompt, options=options):
             if isinstance(msg, AssistantMessage):
+                if use_key and msg.error in ("authentication_failed", "billing_error"):
+                    raise _ApiKeyRejected(msg.error)
                 for block in msg.content:
                     if isinstance(block, TextBlock):
                         pieces.append(block.text)
+            elif isinstance(msg, ResultMessage) and use_key:
+                credits.record(msg.total_cost_usd)
+    except _ApiKeyRejected:
+        raise
     except Exception as e:
         # Try to surface the subprocess stderr if available on the exception
         err_text = getattr(e, "stderr", "") or str(e)
         log.error("agent_sdk subprocess error: %s", err_text)
+        # in case the CLI leaves msg.error unset, the error text is the only clue
+        if use_key and re.search(r"credit balance|invalid api key", "".join(pieces) + err_text, re.I):
+            raise _ApiKeyRejected(err_text) from e
         raise
 
     reply, forward, promo = _extract_markers("".join(pieces).strip() or "…", chat_id)
@@ -255,9 +294,16 @@ async def _reply_agent_sdk(chat_id: int, user_text: str, system_prompt: str) -> 
 
 async def generate_reply(chat_id: int, user_text: str, system_prompt: str) -> tuple[str, bool, bool]:
     """Return (reply_text, should_forward_to_owner, propose_channel)."""
+    global _switch_notice
     try:
-        if CLAUDE_BACKEND == "agent_sdk":
-            return await _reply_agent_sdk(chat_id, user_text, system_prompt)
+        if CLAUDE_BACKEND in ("agent_sdk", "auto"):
+            try:
+                return await _reply_agent_sdk(chat_id, user_text, system_prompt)
+            except _ApiKeyRejected as e:
+                log.warning("API key rejected (%s): switching to the subscription for good", e)
+                _API_KEY_OFF_FILE.write_text(time.strftime("%Y-%m-%d %H:%M:%S\n"))
+                _switch_notice = True
+                return await _reply_agent_sdk(chat_id, user_text, system_prompt)
         if CLAUDE_BACKEND == "api":
             return await _reply_api(chat_id, user_text, system_prompt)
         raise RuntimeError(f"Unknown CLAUDE_BACKEND: {CLAUDE_BACKEND!r}")

@@ -10,9 +10,12 @@ CLAUDE_CODE_OAUTH_TOKEN = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
 
 # In agent_sdk mode the API key must NOT exist in the process env:
 # the SDK would silently prefer it, ending up billing pay-per-use.
-if CLAUDE_BACKEND == "agent_sdk" and ANTHROPIC_API_KEY:
+# "auto" = agent_sdk billed to the API key while it works (e.g. promotional
+# credits), then the OAuth subscription: ai.py passes the key explicitly.
+if CLAUDE_BACKEND in ("agent_sdk", "auto"):
     os.environ.pop("ANTHROPIC_API_KEY", None)
-    ANTHROPIC_API_KEY = ""
+    if CLAUDE_BACKEND == "agent_sdk":
+        ANTHROPIC_API_KEY = ""
 
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
 CLAUDE_MAX_TOKENS = int(os.environ.get("CLAUDE_MAX_TOKENS", "400"))
@@ -21,6 +24,11 @@ CLAUDE_MAX_TOKENS = int(os.environ.get("CLAUDE_MAX_TOKENS", "400"))
 # aliases ("sonnet", "opus", "haiku") or a full model id. Empty = CLI default.
 # Note: CLAUDE_MODEL above applies to the "api" backend only.
 AGENT_SDK_MODEL = os.environ.get("AGENT_SDK_MODEL", "sonnet").strip()
+
+# Optional "💳 Crediti API" panel button ("auto" backend): credits granted (USD);
+# the bot subtracts what its own replies cost (see credits.py).
+API_CREDITS_TOTAL = float(os.environ.get("API_CREDITS_TOTAL", "0") or 0)
+API_CREDITS_EXPIRES = os.environ.get("API_CREDITS_EXPIRES", "").strip()  # YYYY-MM-DD, optional
 
 DATA_DIR = Path("/app/data")
 STATE_FILE = DATA_DIR / "state.json"

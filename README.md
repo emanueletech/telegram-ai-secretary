@@ -164,9 +164,11 @@ Everything lives in `.env`; [`.env.example`](./.env.example) is the annotated li
 |---|---|---|
 | `BOT_TOKEN` | — | Bot token from `@BotFather` (required) |
 | `OWNER_USER_ID` | — | Your Telegram user id: receives the panel and the forwards (required) |
-| `CLAUDE_BACKEND` | `agent_sdk` | `agent_sdk` (subscription via OAuth) or `api` (API key) |
-| `CLAUDE_CODE_OAUTH_TOKEN` | — | OAuth token for `agent_sdk` (`claude setup-token`) |
-| `ANTHROPIC_API_KEY` | — | API key for `api` (leave empty with `agent_sdk`) |
+| `CLAUDE_BACKEND` | `agent_sdk` | `agent_sdk` (subscription via OAuth), `api` (API key) or `auto` (`agent_sdk` billed to the API key until it's rejected — credits used up or expired — then the subscription for good; you get a message when it switches) |
+| `CLAUDE_CODE_OAUTH_TOKEN` | — | OAuth token for `agent_sdk` and `auto` (`claude setup-token`) |
+| `ANTHROPIC_API_KEY` | — | API key for `api` and `auto` (ignored with `agent_sdk`) |
+| `API_CREDITS_TOTAL` | — | `auto` only, optional: credits granted (USD). Adds an API credits button to the panel: total minus what this bot's replies cost, logged in `data/api_spend.log` (an upper bound if other apps use the same credits) |
+| `API_CREDITS_EXPIRES` | — | Optional expiry day (`YYYY-MM-DD`), shown with the credits |
 | `AGENT_SDK_MODEL` | `sonnet` | Model for `agent_sdk`: `sonnet`, `opus`, `haiku` or a full id |
 | `CLAUDE_MODEL` | `claude-haiku-4-5-20251001` | Model for `api` |
 | `CLAUDE_MAX_TOKENS` | `400` | Max length of a reply |

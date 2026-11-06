@@ -9,6 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 import ai
+import credits
 import transcribe
 from config import (AI_FAILURE_ACK, DEFAULT_AWAY_MESSAGE, FORWARD_ACK,
                     DEFAULT_SYSTEM_PROMPT, FORWARD_COOLDOWN_SECONDS,
@@ -393,6 +394,8 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             # 3rd value is the [[CHANNEL]] marker: stripped from the text by
             # ai.py and ignored here — the invite line is the bot's job now.
             reply, forward, _ = await ai.generate_reply(chat_id, incoming_text, system_prompt)
+            if ai.take_switch_notice():
+                await context.bot.send_message(OWNER_USER_ID, t("api_switched"))
         except Exception as e:
             # AI failure: never fall back to away_message (which is the explicit
             # "I'm offline" text). Use a short generic ack so the bot still replies.
@@ -514,6 +517,8 @@ def _menu_markup(s: dict) -> InlineKeyboardMarkup:
         [_btn("btn_kb", "m:kb"), _btn("btn_sched", "m:sched")],
         [_btn("btn_resume_all", "m:resume"), _btn("btn_reset", "m:reset")],
     ]
+    if credits.enabled():
+        rows.append([_btn("btn_credits", "m:credits")])
     if PROMO_CHANNEL_URL:
         rows.append([_btn("btn_promo", "m:promo"), _btn("btn_defaults", "m:defaults")])
     else:
@@ -590,6 +595,13 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         update_state(forward_enabled=new)
         await q.answer(t("ans_fwd_on") if new else t("ans_fwd_off"))
         await _show_menu(update, edit=True)
+        return
+
+    # ---- API credits ----
+    if data == "m:credits":
+        await q.answer()
+        await q.edit_message_text(credits.summary(ai.api_key_off()), parse_mode="HTML",
+                                  reply_markup=_BACK_MARKUP)
         return
 
     # ---- stats ----

@@ -64,6 +64,20 @@ STRINGS: dict[str, dict[str, str]] = {
         "kb_set": "set ({n} characters)",
         "kb_empty": "empty",
 
+        # ── API credits (CLAUDE_BACKEND=auto) ──
+        "btn_credits": "💳 API credits",
+        "credits": ("💳 <b>API credits</b>\n\n"
+                    "Spent by this bot: <b>{spent} $</b>\n"
+                    "Left: at most <b>{left} $</b> of {total}"),
+        "credits_expire": "Expire in <b>{days}</b> days",
+        "credits_expired": "<b>Expired</b>",
+        "credits_low": "⚠️ Almost used up: then the bot switches to the subscription by itself.",
+        "credits_note": ("<i>Counts only this bot's replies: if other apps use the same "
+                         "credits, fewer are left. The exact balance is in the Console.</i>"),
+        "credits_off": "💳 <b>API credits used up</b>: replies now run on your Claude subscription.",
+        "api_switched": ("💳 API key rejected (credits used up or key revoked): "
+                         "AI replies now run on your Claude subscription."),
+
         # ── buttons ──
         "btn_stats": "📊 Stats",
         "btn_fwd": "📨 Forwarding: {state}",
@@ -218,6 +232,19 @@ STRINGS: dict[str, dict[str, str]] = {
         "off": "disattivo",
         "kb_set": "impostata ({n} caratteri)",
         "kb_empty": "vuota",
+
+        "btn_credits": "💳 Crediti API",
+        "credits": ("💳 <b>Crediti API</b>\n\n"
+                    "Spesi da questo bot: <b>{spent} $</b>\n"
+                    "Rimasti: al massimo <b>{left} $</b> su {total}"),
+        "credits_expire": "Scadono tra <b>{days}</b> giorni",
+        "credits_expired": "<b>Scaduti</b>",
+        "credits_low": "⚠️ Stanno per finire: poi il bot passa da solo all'abbonamento.",
+        "credits_note": ("<i>Conta solo le risposte di questo bot: se altre app usano gli "
+                         "stessi crediti, ne restano meno. Il saldo esatto è nella Console.</i>"),
+        "credits_off": "💳 <b>Crediti API finiti</b>: le risposte usano l'abbonamento Claude.",
+        "api_switched": ("💳 Chiave API rifiutata (crediti finiti o chiave revocata): "
+                         "le risposte AI ora usano l'abbonamento Claude."),
 
         "btn_stats": "📊 Statistiche",
         "btn_fwd": "📨 Inoltro: {state}",
