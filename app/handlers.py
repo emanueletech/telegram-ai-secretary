@@ -601,7 +601,7 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if data == "m:credits":
         await q.answer()
         await q.edit_message_text(credits.summary(ai.api_key_off()), parse_mode="HTML",
-                                  reply_markup=_BACK_MARKUP)
+                                  reply_markup=_back_markup())
         return
 
     # ---- stats ----
