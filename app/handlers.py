@@ -19,6 +19,7 @@ from config import (ACK_INSTRUCTIONS, ACK_MARKER, AI_FAILURE_ACK, DEFAULT_AWAY_M
                     PROMO_APPEND_TEXT, PROMO_CHANNEL_URL,
                     PROMO_COOLDOWN_DAYS, PROMO_HISTORY_NOTE, PROMO_INSTRUCTIONS,
                     PROMO_MANUAL_TEXT, REPLY_COOLDOWN_SECONDS, SENDER_CONTEXT,
+                    VOICE_NOTE_PREFIX,
                     UI_LANGUAGE, VOICE_MAX_SECONDS, WHISPER_ENABLED)
 from i18n import t
 from state import (bump_stat, chat_name, clear_takeover, in_schedule, is_paused,
@@ -406,7 +407,8 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         try:
             # 3rd value is the [[CHANNEL]] marker: stripped from the text by
             # ai.py and ignored here — the invite line is the bot's job now.
-            reply, forward, _ = await ai.generate_reply(chat_id, incoming_text, system_prompt)
+            ai_text = (VOICE_NOTE_PREFIX + incoming_text) if msg.voice else incoming_text
+            reply, forward, _ = await ai.generate_reply(chat_id, ai_text, system_prompt)
             if ai.take_switch_notice():
                 await context.bot.send_message(OWNER_USER_ID, t("api_switched"))
         except Exception as e:

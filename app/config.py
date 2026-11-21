@@ -97,6 +97,15 @@ WHISPER_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "").strip()
 # small hosts); the customer gets an ack and the note is handed off to the
 # owner, who hears it directly in the business chat. 0 = no limit.
 VOICE_MAX_SECONDS = int(os.environ.get("VOICE_MAX_SECONDS", "300"))
+# Put before a transcribed voice note in what the AI reads. Without it the AI
+# only saw plain text, and to "can you hear this voice message?" it answered
+# that it can't listen to voice notes. In English on purpose (see
+# PROMO_HISTORY_NOTE): the reply language follows the transcription.
+VOICE_NOTE_PREFIX = (
+    "[Voice note, transcribed for you automatically: you did hear it. Reply "
+    "in writing to what the person says; never say you can't listen to "
+    "voice notes.]\n"
+)
 # Persisted on the mounted data volume so the model isn't re-downloaded on rebuild
 WHISPER_CACHE_DIR = DATA_DIR / "whisper-models"
 
