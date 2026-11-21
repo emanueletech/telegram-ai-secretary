@@ -8,3 +8,7 @@ anthropic==1.0.0
 claude-agent-sdk==0.2.144
 # Local voice transcription (already the latest release).
 faster-whisper==1.2.1
+# Audio decoder used by faster-whisper. av 19 dropped the metadata_errors
+# argument faster-whisper 1.2.1 passes to av.open(), so every voice note
+# failed with a TypeError. Unpinned, a rebuild picked it up silently.
+av==18.1.0

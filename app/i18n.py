@@ -32,11 +32,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "voice_tag": " 🎙️ (transcribed voice note)",
         "reason_attachment": "attachment from the customer",
         "reason_voice_long": "voice note too long",
+        "reason_voice_failed": "voice note not transcribed (error)",
         "reason_human": "the customer asked for you",
         "reason_ai": "the bot can't answer",
         "media_photo": "[a photo]",
         "media_document": "[a document]",
         "voice_long_text": "[{secs}s voice note — too long to transcribe]",
+        "voice_failed_text": "[voice note — transcription failed]",
 
         # ── modes ──
         "mode_off": "🔴 Off",
@@ -218,11 +220,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "voice_tag": " 🎙️ (vocale trascritto)",
         "reason_attachment": "allegato dal cliente",
         "reason_voice_long": "vocale troppo lungo",
+        "reason_voice_failed": "vocale non trascritto (errore)",
         "reason_human": "richiesta esplicita del cliente",
         "reason_ai": "il bot non sa rispondere",
         "media_photo": "[una foto]",
         "media_document": "[un documento]",
         "voice_long_text": "[vocale di {secs}s — troppo lungo per la trascrizione]",
+        "voice_failed_text": "[vocale — trascrizione non riuscita]",
 
         "mode_off": "🔴 Spento",
         "mode_away": "💤 Assenza",

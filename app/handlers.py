@@ -127,14 +127,15 @@ def _clip(text: str, limit: int = 1500) -> str:
     return text if len(text) <= limit else text[:limit].rstrip() + "…"
 
 
-async def _forward_to_owner(context, msg, customer_text: str, customer_reply: str, reason: str) -> None:
+async def _forward_to_owner(context, msg, customer_text: str, customer_reply: str, reason: str,
+                            transcribed: bool = True) -> None:
     """Notify the owner about an important customer message."""
     user = msg.from_user
     name = user.full_name if user else t("unknown_sender")
     uname = f"@{user.username}" if user and getattr(user, "username", None) else "—"
     notice = t("notice", reason=reason, name=html.escape(name),
                uname=html.escape(uname), chat_id=msg.chat.id,
-               voice=t("voice_tag") if msg.voice else "",
+               voice=t("voice_tag") if msg.voice and transcribed else "",
                text=html.escape(_clip(customer_text)),
                reply=html.escape(_clip(customer_reply)))
     sent = await context.bot.send_message(OWNER_USER_ID, notice, parse_mode="HTML")
@@ -264,7 +265,7 @@ async def _ack_and_handoff(context, state, msg, chat_id: int,
     last_fwd = state["last_forward_at"].get(str(chat_id), 0)
     if time.time() - last_fwd >= FORWARD_COOLDOWN_SECONDS:
         try:
-            await _forward_to_owner(context, msg, customer_text, ack, reason)
+            await _forward_to_owner(context, msg, customer_text, ack, reason, transcribed=False)
             mark_forward(chat_id)
             bump_stat("forwarded")
         except Exception as e:
@@ -358,8 +359,11 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             audio = bytes(await tg_file.download_as_bytearray())
             incoming_text = (await transcribe.transcribe(audio)).strip()
         except Exception as e:
+            # Don't leave the customer hanging (they may already have the 👀):
+            # ack and pass the note to the owner, like an over-long one.
             log.exception("voice transcription failed: %s", e)
-            bump_stat("skipped")
+            await _ack_and_handoff(context, state, msg, chat_id,
+                                   t("voice_failed_text"), t("reason_voice_failed"))
             return
         if not incoming_text:
             log.info("empty transcription — skipping")
