@@ -92,11 +92,27 @@ def bump_stat(key: str) -> None:
 
 # ---- human handoff / takeover ----
 
-def mark_takeover(chat_id: int) -> None:
+def _remember_name(state: dict, chat_id: int, name: str | None, keep: int = 500) -> None:
+    if not name:
+        return
+    names = state.setdefault("chat_names", {})
+    names.pop(str(chat_id), None)  # re-insert so the newest stay when trimming
+    names[str(chat_id)] = name
+    if len(names) > keep:
+        for k in list(names)[: len(names) - keep]:
+            del names[k]
+
+
+def chat_name(state: dict, chat_id: int | str) -> str:
+    return state.get("chat_names", {}).get(str(chat_id)) or str(chat_id)
+
+
+def mark_takeover(chat_id: int, name: str | None = None) -> None:
     """Record that a human just acted in this chat; pauses the bot there."""
     with _lock:
         state = _load()
         state.setdefault("human_takeover_at", {})[str(chat_id)] = int(time.time())
+        _remember_name(state, chat_id, name)
         _save(state)
 
 
@@ -119,13 +135,15 @@ def is_paused(state: dict, chat_id: int) -> bool:
     return time.time() - ts < HANDOFF_PAUSE_SECONDS
 
 
-def remember_forward(owner_msg_id: int, chat_id: int, keep: int = 500) -> None:
+def remember_forward(owner_msg_id: int, chat_id: int, keep: int = 500,
+                     name: str | None = None) -> None:
     """Map a forwarded-notice message_id (in the owner DM) to the customer chat,
     so a reply to that notice can be relayed back. Keeps the newest `keep`."""
     with _lock:
         state = _load()
         pf = state.setdefault("pending_forwards", {})
         pf[str(owner_msg_id)] = chat_id
+        _remember_name(state, chat_id, name)
         if len(pf) > keep:  # dict preserves insertion order — drop the oldest
             for k in list(pf)[: len(pf) - keep]:
                 pf.pop(k, None)

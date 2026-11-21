@@ -20,7 +20,7 @@ from config import (AI_FAILURE_ACK, DEFAULT_AWAY_MESSAGE, FORWARD_ACK,
                     PROMO_MANUAL_TEXT, REPLY_COOLDOWN_SECONDS, SENDER_CONTEXT,
                     UI_LANGUAGE, VOICE_MAX_SECONDS, WHISPER_ENABLED)
 from i18n import t
-from state import (bump_stat, clear_takeover, in_schedule, is_paused,
+from state import (bump_stat, chat_name, clear_takeover, in_schedule, is_paused,
                    load_state, lookup_forward, mark_forward, mark_promo,
                    mark_reply, mark_takeover, remember_forward, update_state)
 
@@ -139,7 +139,7 @@ async def _forward_to_owner(context, msg, customer_text: str, customer_reply: st
     sent = await context.bot.send_message(OWNER_USER_ID, notice, parse_mode="HTML")
     # Remember which customer this notice belongs to, so a reply to it can be
     # relayed back to the right conversation.
-    remember_forward(sent.message_id, msg.chat.id)
+    remember_forward(sent.message_id, msg.chat.id, name=name)
 
 
 async def _send_business(context, conn_id: str, chat_id: int, text: str,
@@ -294,7 +294,7 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         if msg.message_id in _bot_sent_ids:
             _bot_sent_ids.remove(msg.message_id)
         else:
-            mark_takeover(msg.chat.id)
+            mark_takeover(msg.chat.id, getattr(msg.chat, "full_name", None))
             log.info("owner typed in chat=%s — bot paused (human takeover)", msg.chat.id)
         return
 
@@ -473,6 +473,32 @@ def _hours(s: dict) -> str:
     return f"{sched['start']}–{sched['end']}" if sched else t("always_on")
 
 
+def _paused_chats(s: dict) -> list[tuple[str, int]]:
+    """Paused chats as (chat_id, minutes left), the ones ending soonest first."""
+    now = time.time()
+    out = []
+    for cid, ts in s.get("human_takeover_at", {}).items():
+        left = ts + HANDOFF_PAUSE_SECONDS - now
+        if left > 0:
+            out.append((cid, max(1, round(left / 60))))
+    return sorted(out, key=lambda p: p[1])
+
+
+async def _show_paused(update: Update, s: dict) -> None:
+    """Paused-chats screen: resume the bot on one chat, or everywhere."""
+    paused = _paused_chats(s)
+    if not paused:
+        await _show_menu(update, edit=True)
+        return
+    rows = [[InlineKeyboardButton(
+        t("btn_resume_one", name=chat_name(s, cid)[:40], mins=mins),
+        callback_data=f"m:resume:{cid}")] for cid, mins in paused[:20]]
+    rows.append([_btn("btn_resume_all", "m:resume")])
+    rows.append([_btn("btn_back", "m:home")])
+    await update.callback_query.edit_message_text(t("paused_title", n=len(paused)), parse_mode="HTML",
+                              reply_markup=InlineKeyboardMarkup(rows))
+
+
 def _menu_text(s: dict) -> str:
     kb = s.get("knowledge", "")
     paused = [c for c in s.get("human_takeover_at", {}) if is_paused(s, int(c))]
@@ -517,6 +543,9 @@ def _menu_markup(s: dict) -> InlineKeyboardMarkup:
         [_btn("btn_kb", "m:kb"), _btn("btn_sched", "m:sched")],
         [_btn("btn_resume_all", "m:resume"), _btn("btn_reset", "m:reset")],
     ]
+    paused = _paused_chats(s)
+    if paused:
+        rows.insert(-1, [_btn("btn_paused", "m:paused", n=len(paused))])
     if credits.enabled():
         rows.append([_btn("btn_credits", "m:credits")])
     if PROMO_CHANNEL_URL:
@@ -672,6 +701,19 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             parse_mode="HTML", reply_markup=_cancel_markup())
         return
 
+    # ---- paused chats: resume one ----
+    if data == "m:paused":
+        await q.answer()
+        await _show_paused(update, s)
+        return
+    if data.startswith("m:resume:"):
+        cid = data.split(":", 2)[2]
+        name = chat_name(s, cid)
+        clear_takeover(int(cid))
+        await q.answer(t("ans_resumed_one", name=name[:40]))
+        await _show_paused(update, load_state())
+        return
+
     # ---- resume everywhere ----
     if data == "m:resume":
         n = clear_takeover(None)
@@ -812,7 +854,7 @@ async def on_owner_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             bump_stat("relayed")
             await msg.reply_text(
                 t("relayed"),
-                reply_markup=InlineKeyboardMarkup([[_btn("btn_resume_here", "m:resume")]]))
+                reply_markup=InlineKeyboardMarkup([[_btn("btn_resume_here", f"m:resume:{chat_id}")]]))
         else:
             await msg.reply_text(t("relay_failed"))
         return

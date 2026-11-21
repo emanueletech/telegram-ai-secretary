@@ -68,6 +68,7 @@ The active mode has a ✅. Tap another one to switch.
 | 📚 **Business info** | The knowledge base the AI answers from: ✏️ *Edit* or 🗑 *Clear*. |
 | 🕐 **AI hours** | ✏️ *Set hours*, then type e.g. `09:00-19:00` (windows across midnight work), or ♾ *Always on*. |
 | ▶️ **Resume everywhere** | Lifts every pause, so the bot answers again in chats you had taken over. |
+| ⏸️ **Paused chats (n)** | Shown while you are handling chats yourself: lists them by name with the minutes left, and lets you hand each one back to the bot. |
 | 🗑 **Clear memory** | Forgets all conversations (asks for confirmation). |
 | 📢 **Send channel invite** | Sends your channel's invite to a customer: type their `chat_id`. Shown only when a channel is configured. |
 | ♻️ **Restore defaults** | Puts back the default away message and personality (asks for confirmation). |
@@ -78,7 +79,7 @@ You get a **📨 Message to forward** notice in the bot chat: who wrote, what th
 
 - **Reply to that notice** and your text goes straight to the customer, from your account.
 - The bot then stays **silent in that chat for 30 minutes** (`HANDOFF_PAUSE_SECONDS`), so it never talks over you. The same happens when you type in the chat yourself. Each message you send restarts the timer.
-- To bring it back earlier, tap **▶️ Resume the bot here** under the confirmation, or ▶️ *Resume everywhere* in the panel.
+- To bring it back earlier, tap **▶️ Resume the bot here** under the confirmation, or pick the chat under ⏸️ *Paused chats* in the panel (▶️ *Resume everywhere* lifts them all).
 
 <details>
 <summary>⌨️ <b>Slash commands</b> (shortcuts, for those who prefer typing)</summary>

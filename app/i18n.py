@@ -86,6 +86,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn_kb": "📚 Business info",
         "btn_sched": "🕐 AI hours",
         "btn_resume_all": "▶️ Resume everywhere",
+        "btn_paused": "⏸️ Paused chats ({n})",
+        "btn_resume_one": "▶️ {name} · {mins} min left",
+        "paused_title": ("⏸️ <b>Paused chats: {n}</b>\n\nYou're handling these yourself, "
+                         "so the bot stays silent there. Tap one to hand it back to the bot."),
+        "ans_resumed_one": "Bot resumed with {name}",
         "btn_reset": "🗑 Clear memory",
         "btn_promo": "📢 Send channel invite",
         "btn_defaults": "♻️ Restore defaults",
@@ -253,6 +258,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn_kb": "📚 Info attività",
         "btn_sched": "🕐 Orari AI",
         "btn_resume_all": "▶️ Riattiva ovunque",
+        "btn_paused": "⏸️ Chat in pausa ({n})",
+        "btn_resume_one": "▶️ {name} · ancora {mins} min",
+        "paused_title": ("⏸️ <b>Chat in pausa: {n}</b>\n\nQui stai rispondendo tu e il bot "
+                         "tace. Tocca una chat per ridarla al bot."),
+        "ans_resumed_one": "Bot riattivato con {name}",
         "btn_reset": "🗑 Cancella memoria",
         "btn_promo": "📢 Invia invito al canale",
         "btn_defaults": "♻️ Ripristina default",
