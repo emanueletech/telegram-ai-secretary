@@ -82,6 +82,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn_stats": "📊 Stats",
         "btn_fwd": "📨 Forwarding: {state}",
         "btn_away": "✍️ Away message",
+        "btn_voice_emoji": "👀 Voice emoji",
+        "btn_ack_emojis": "👍 OK emojis",
+        "p_voice_emoji": ("👀 <b>Voice note emoji</b>\n\nSent right away when a voice "
+                          "note arrives, before the reply. Send me one emoji, "
+                          "or <code>-</code> to turn it off.\n\nCurrent: {cur}"),
+        "p_ack_emojis": ("👍 <b>OK emojis</b>\n\nWhen a message needs no answer "
+                         "(\"no thanks\", \"ok\", \"got it\") the bot sends one of these "
+                         "at random instead of a reply. Send me the emojis separated "
+                         "by spaces, or <code>-</code> to turn it off.\n\nCurrent: {cur}"),
+        "ok_emoji": "✅ Emojis updated: {cur}",
         "btn_prompt": "🧠 AI personality",
         "btn_kb": "📚 Business info",
         "btn_sched": "🕐 AI hours",
@@ -254,6 +264,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn_stats": "📊 Statistiche",
         "btn_fwd": "📨 Inoltro: {state}",
         "btn_away": "✍️ Messaggio assenza",
+        "btn_voice_emoji": "👀 Emoji vocali",
+        "btn_ack_emojis": "👍 Emoji di conferma",
+        "p_voice_emoji": ("👀 <b>Emoji per i vocali</b>\n\nLa mando subito quando arriva "
+                          "un vocale, prima della risposta. Scrivimi un'emoji, "
+                          "oppure <code>-</code> per spegnerla.\n\nAttuale: {cur}"),
+        "p_ack_emojis": ("👍 <b>Emoji di conferma</b>\n\nQuando un messaggio non chiede "
+                         "risposta (\"no grazie\", \"ok\", \"ricevuto\") il bot manda una "
+                         "di queste a caso invece di rispondere. Scrivimele separate "
+                         "da spazi, oppure <code>-</code> per spegnerle.\n\nAttuale: {cur}"),
+        "ok_emoji": "✅ Emoji aggiornate: {cur}",
         "btn_prompt": "🧠 Personalità AI",
         "btn_kb": "📚 Info attività",
         "btn_sched": "🕐 Orari AI",

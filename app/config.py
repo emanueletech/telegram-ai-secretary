@@ -258,6 +258,23 @@ PROMO_CHANNEL_DESCRIPTION = os.environ.get("PROMO_CHANNEL_DESCRIPTION", "").stri
 PROMO_COOLDOWN_DAYS = int(os.environ.get("PROMO_COOLDOWN_DAYS", "30"))
 
 PROMO_MARKER = "[[CHANNEL]]"
+
+# Quick emoji acknowledgements. Telegram doesn't let a business bot react to
+# messages (setMessageReaction answers "message to react not found" in a
+# business chat), so the bot sends the emoji as a message: alone, it shows up
+# big and animated. Both are defaults, editable from the panel; empty = off.
+VOICE_EMOJI = os.environ.get("VOICE_EMOJI", "👀").strip()
+ACK_EMOJIS = os.environ.get("ACK_EMOJIS", "👍 👌 🙏 😊").strip()
+ACK_MARKER = "[[ACK]]"
+ACK_INSTRUCTIONS = (
+    "\n\nIMPORTANT — messages that need no answer: if the person's latest "
+    "message just closes the exchange and a reply in words would only be "
+    "filler (\"no thanks\", \"ok\", \"got it\", \"thanks!\", \"perfect\", "
+    "a goodbye, a lone emoji or sticker-like reaction), reply with ONLY the "
+    f"token {ACK_MARKER} (after the language tag): the bot turns it into a "
+    "short emoji. Never use it for a question, a request, new information "
+    "you should react to, or the first message of a conversation."
+)
 PROMO_INSTRUCTIONS = (
     "\n\n--- OWNER'S TELEGRAM CHANNEL ---\n"
     "The owner runs a Telegram channel"

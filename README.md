@@ -64,6 +64,8 @@ The active mode has a ✅. Tap another one to switch.
 | 📊 **Stats** | AI and away replies, forwards, your relayed answers, channel invites, paused chats, connection status. |
 | 📨 **Forwarding: ON/OFF** | Turns forwarding of important messages to you on or off. |
 | ✍️ **Away message** | Shows the current text; type the new one as your next message (❌ *Cancel* to back out). |
+| 👀 **Voice emoji** | Emoji sent right away when a voice note arrives, before the AI reply (`-` turns it off). |
+| 👍 **OK emojis** | When a message needs no answer ("no thanks", "ok", "got it"), the bot sends one of these at random instead of a reply (`-` turns it off). |
 | 🧠 **AI personality** | The instructions the AI follows: who you are, the tone, what not to promise. Type the new one; changing it clears the conversation memory. |
 | 📚 **Business info** | The knowledge base the AI answers from: ✏️ *Edit* or 🗑 *Clear*. |
 | 🕐 **AI hours** | ✏️ *Set hours*, then type e.g. `09:00-19:00` (windows across midnight work), or ♾ *Always on*. |
@@ -179,6 +181,8 @@ Everything lives in `.env`; [`.env.example`](./.env.example) is the annotated li
 | `WHISPER_MODEL` | `base` | `tiny`, `base`, `small`, `medium`, `large-v3` |
 | `WHISPER_LANGUAGE` | _(auto)_ | Force a language (e.g. `it`) for short clips |
 | `VOICE_MAX_SECONDS` | `300` | Longer voice notes go to you instead of being transcribed (`0` = no limit) |
+| `VOICE_EMOJI` | `👀` | Default voice-note emoji (editable from the panel) |
+| `ACK_EMOJIS` | `👍 👌 🙏 😊` | Default emojis for messages that need no answer (editable from the panel) |
 | `PROMO_CHANNEL_URL` | _(empty)_ | Channel invite link for the promo button (empty = feature off) |
 | `PROMO_BUTTON_TEXT` | `📢 Our channel` | Label of the promo button |
 | `PROMO_CHANNEL_DESCRIPTION` | _(empty)_ | What the channel is about, so the AI can answer questions on it |

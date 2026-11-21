@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from threading import Lock
 
-from config import (DEFAULT_AWAY_MESSAGE, DEFAULT_SYSTEM_PROMPT,
+from config import (ACK_EMOJIS, VOICE_EMOJI, DEFAULT_AWAY_MESSAGE, DEFAULT_SYSTEM_PROMPT,
                     HANDOFF_PAUSE_SECONDS, STATE_FILE)
 
 _lock = Lock()
@@ -19,6 +19,8 @@ DEFAULT_STATE = {
     "knowledge": "",              # optional FAQ/knowledge base set with /kb
     "schedule": None,             # {"start": "09:00", "end": "19:00"} or None = always AI
     "forward_enabled": True,      # forward/escalate important messages to the owner
+    "voice_emoji": VOICE_EMOJI,   # sent right away when a voice note arrives ("" = off)
+    "ack_emojis": ACK_EMOJIS,     # picked at random for messages that need no answer
     "last_reply_at": {},          # chat_id -> unix ts
     "last_forward_at": {},        # chat_id -> unix ts (anti-spam for the owner)
     "last_promo_at": {},          # chat_id -> unix ts (channel promo cooldown)

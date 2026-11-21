@@ -1,6 +1,7 @@
 import asyncio
 import html
 import logging
+import random
 import re
 import time
 from collections import deque
@@ -11,7 +12,7 @@ from telegram.ext import ContextTypes
 import ai
 import credits
 import transcribe
-from config import (AI_FAILURE_ACK, DEFAULT_AWAY_MESSAGE, FORWARD_ACK,
+from config import (ACK_INSTRUCTIONS, ACK_MARKER, AI_FAILURE_ACK, DEFAULT_AWAY_MESSAGE, FORWARD_ACK,
                     DEFAULT_SYSTEM_PROMPT, FORWARD_COOLDOWN_SECONDS,
                     HANDOFF_PAUSE_SECONDS, KB_PREAMBLE, MAX_INPUT_CHARS,
                     OWNER_USER_ID, PROMO_ALREADY_NOTE, PROMO_BUTTON_TEXT,
@@ -347,6 +348,11 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                 context, state, msg, chat_id,
                 t("voice_long_text", secs=duration), t("reason_voice_long"))
             return
+        # "I'm listening" while the note is transcribed — only when the AI is
+        # going to answer it, not before the away message.
+        voice_emoji = state.get("voice_emoji", "")
+        if voice_emoji and (mode == "ai" or (mode == "auto" and in_schedule(state))):
+            await _send_business(context, state["connection_id"], chat_id, voice_emoji)
         try:
             tg_file = await context.bot.get_file(msg.voice.file_id)
             audio = bytes(await tg_file.download_as_bytearray())
@@ -389,6 +395,9 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             system_prompt += SENDER_CONTEXT.format(name=f"{sender.full_name}{uname}")
         if PROMO_CHANNEL_URL:
             system_prompt += PROMO_INSTRUCTIONS if promo_allowed else PROMO_ALREADY_NOTE
+        ack_emojis = state.get("ack_emojis", "").split()
+        if ack_emojis:
+            system_prompt += ACK_INSTRUCTIONS
         typing = _typing_keepalive(context, state["connection_id"], chat_id)
         try:
             # 3rd value is the [[CHANNEL]] marker: stripped from the text by
@@ -407,6 +416,16 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             typing.cancel()
     else:
         reply = state["away_message"]
+
+    # [[ACK]]: the message needs no answer — send just an emoji, and keep the
+    # channel pitch for a real reply.
+    if ACK_MARKER in reply:
+        reply = reply.replace(ACK_MARKER, "").strip()
+        emojis = state.get("ack_emojis", "").split()
+        if not reply and emojis:
+            reply = random.choice(emojis)
+            promo_allowed = False
+        reply = reply or "👍"
 
     # An explicit request to talk to a human always escalates, even in away
     # mode where the AI isn't involved to emit its marker. Use incoming_text so
@@ -541,6 +560,8 @@ def _menu_markup(s: dict) -> InlineKeyboardMarkup:
          _btn("btn_fwd", "m:fwd", state="ON" if fwd_on else "OFF")],
         [_btn("btn_away", "m:set:away"), _btn("btn_prompt", "m:set:prompt")],
         [_btn("btn_kb", "m:kb"), _btn("btn_sched", "m:sched")],
+        [_btn("btn_voice_emoji", "m:set:voice_emoji"),
+         _btn("btn_ack_emojis", "m:set:ack_emojis")],
         [_btn("btn_resume_all", "m:resume"), _btn("btn_reset", "m:reset")],
     ]
     paused = _paused_chats(s)
@@ -587,7 +608,8 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 # What each free-text edit asks for: i18n key of the prompt per field.
 _PROMPTS = {"away": "p_away", "prompt": "p_prompt", "kb": "p_kb",
-            "sched": "p_sched", "promo": "p_promo"}
+            "sched": "p_sched", "promo": "p_promo",
+            "voice_emoji": "p_voice_emoji", "ack_emojis": "p_ack_emojis"}
 
 
 async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -694,6 +716,8 @@ async def on_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "prompt": s.get("system_prompt", ""),
             "kb": s.get("knowledge", "") or t("empty_paren"),
             "sched": _hours(s),
+            "voice_emoji": s.get("voice_emoji") or t("off"),
+            "ack_emojis": s.get("ack_emojis") or t("off"),
             "promo": "",
         }.get(field, "")
         await q.edit_message_text(
@@ -790,6 +814,12 @@ async def _apply_pending(update: Update, context: ContextTypes.DEFAULT_TYPE,
         start, end = f"{m.group(1)}:{m.group(2)}", f"{m.group(3)}:{m.group(4)}"
         update_state(schedule={"start": start, "end": end})
         await msg.reply_text(t("ok_hours", start=start, end=end))
+    elif field in ("voice_emoji", "ack_emojis"):
+        # "-" or "off" turns it off; the voice emoji is a single one.
+        parts = [] if text.strip().lower() in ("-", "off", "no") else text.split()
+        value = " ".join(parts[:1] if field == "voice_emoji" else parts[:20])
+        update_state(**{field: value})
+        await msg.reply_text(t("ok_emoji", cur=value or t("off")))
     elif field == "promo":
         try:
             chat_id = int(text.strip())
