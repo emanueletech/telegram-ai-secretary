@@ -9,7 +9,8 @@ from config import (AGENT_SDK_MODEL, ANTHROPIC_API_KEY, CLAUDE_BACKEND,
                     CLAUDE_CODE_OAUTH_TOKEN, CLAUDE_MAX_TOKENS, CLAUDE_MODEL,
                     CONVERSATION_INSTRUCTIONS, DATA_DIR, FORWARD_INSTRUCTIONS,
                     FORWARD_MARKER, HISTORY_MAX_TURNS, HISTORY_TTL_DAYS,
-                    LANG_MARKER_RE, LANGUAGE_INSTRUCTIONS, PROMO_MARKER)
+                    LANG_MARKER_RE, LANGUAGE_INSTRUCTIONS, PROMO_MARKER,
+                    SECURITY_INSTRUCTIONS)
 
 log = logging.getLogger(__name__)
 
@@ -173,7 +174,7 @@ async def _reply_api(chat_id: int, user_text: str, system_prompt: str) -> tuple[
     system_blocks = [{
         "type": "text",
         "text": system_prompt + CONVERSATION_INSTRUCTIONS + FORWARD_INSTRUCTIONS
-                + LANGUAGE_INSTRUCTIONS,
+                + LANGUAGE_INSTRUCTIONS + SECURITY_INSTRUCTIONS,
         "cache_control": {"type": "ephemeral"},
     }]
 
@@ -251,7 +252,7 @@ async def _reply_agent_sdk(chat_id: int, user_text: str, system_prompt: str) -> 
 
     options = ClaudeAgentOptions(
         system_prompt=system_prompt + CONVERSATION_INSTRUCTIONS + FORWARD_INSTRUCTIONS
-                + LANGUAGE_INSTRUCTIONS,
+                + LANGUAGE_INSTRUCTIONS + SECURITY_INSTRUCTIONS,
         allowed_tools=[],
         max_turns=1,
         model=AGENT_SDK_MODEL or None,  # None = Claude Code CLI default
@@ -292,9 +293,28 @@ async def _reply_agent_sdk(chat_id: int, user_text: str, system_prompt: str) -> 
 
 # ─────────────────────────── dispatcher ───────────────────────────
 
+# Things a customer could type to pass as the bot's own plumbing: the
+# [[MARKERS]], the "[System note: …]" lines the bot writes into the history,
+# and role labels that the agent_sdk backend uses to serialise the history
+# ("User:" / "Assistant:" at the start of a line).
+_FAKE_NOTE_RE = re.compile(r"\[(\s*(?:system|sistema|nota di sistema|owner|admin)\b)", re.I)
+_FAKE_ROLE_RE = re.compile(r"(?im)^(\s*)(user|assistant|human|system)(\s*):")
+
+
+def sanitize_incoming(text: str) -> str:
+    """Defuse markers, fake system notes and role labels in a customer message."""
+    clean = text.replace("[[", "[").replace("]]", "]")
+    clean = _FAKE_NOTE_RE.sub(r"(\1", clean)
+    clean = _FAKE_ROLE_RE.sub(r"\1\2\3 -", clean)
+    if clean != text:
+        log.info("incoming text sanitised (possible injection attempt)")
+    return clean
+
+
 async def generate_reply(chat_id: int, user_text: str, system_prompt: str) -> tuple[str, bool, bool]:
     """Return (reply_text, should_forward_to_owner, propose_channel)."""
     global _switch_notice
+    user_text = sanitize_incoming(user_text)
     try:
         if CLAUDE_BACKEND in ("agent_sdk", "auto"):
             try:
