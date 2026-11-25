@@ -359,9 +359,10 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             tg_file = await context.bot.get_file(msg.voice.file_id)
             audio = bytes(await tg_file.download_as_bytearray())
             # Whisper's language guess is unreliable on a 1–2 s clip; give it
-            # the chat's language to fall back on (last AI reply, else the
-            # sender's Telegram app language).
-            lang_hint = ai.last_language(chat_id) or getattr(msg.from_user, "language_code", None)
+            # the chat's language to fall back on: the one of the last reply
+            # to a written message (never to a voice note, which could itself
+            # have been misheard), else the sender's Telegram app language.
+            lang_hint = ai.text_language(chat_id) or getattr(msg.from_user, "language_code", None)
             incoming_text = (await transcribe.transcribe(audio, lang_hint)).strip()
         except Exception as e:
             # Don't leave the customer hanging (they may already have the 👀):
@@ -413,6 +414,8 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             # ai.py and ignored here — the invite line is the bot's job now.
             ai_text = (VOICE_NOTE_PREFIX + incoming_text) if msg.voice else incoming_text
             reply, forward, _ = await ai.generate_reply(chat_id, ai_text, system_prompt)
+            if not msg.voice:
+                ai.note_text_language(chat_id)
             if ai.take_switch_notice():
                 await context.bot.send_message(OWNER_USER_ID, t("api_switched"))
         except Exception as e:

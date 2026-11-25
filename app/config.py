@@ -97,7 +97,8 @@ WHISPER_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "").strip()
 # sei?" came out as Spanish ("Manuel, ¿cómo está ahí?") and the AI answered in
 # Spanish. When the clip is shorter than this, or Whisper is less sure than
 # VOICE_LANG_MIN_PROB, the note is transcribed again in the chat's language
-# (the one the AI last replied in, else the sender's Telegram app language).
+# (the AI's last reply to a written message there, else the sender's
+# Telegram app language).
 VOICE_LANG_SHORT_SECONDS = 4.0
 VOICE_LANG_MIN_PROB = 0.8
 # Voice notes longer than this many seconds are not transcribed (CPU cost on

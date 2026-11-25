@@ -29,6 +29,11 @@ _history_updated: dict[int, float] = {}
 # chat_id -> ISO code of the language the AI last replied in ([[LANG:xx]]), so
 # the bot's own fixed lines (channel invite, acks) match the conversation.
 _language: dict[int, str] = {}
+# chat_id -> language of the AI's last reply to a WRITTEN message. Short voice
+# notes fall back on it when Whisper can't tell the language; replies to voice
+# notes don't update it, or one misheard note (Italian taken for Spanish) would
+# make every later short note in that chat "Spanish" too.
+_text_language: dict[int, str] = {}
 _LANG_RE = re.compile(LANG_MARKER_RE)
 
 _anthropic_client = None  # lazy
@@ -43,6 +48,7 @@ def _prune_expired() -> None:
         _history.pop(cid, None)
         _history_updated.pop(cid, None)
         _language.pop(cid, None)
+        _text_language.pop(cid, None)
 
 
 def _save_history() -> None:
@@ -50,7 +56,8 @@ def _save_history() -> None:
     _prune_expired()
     data = {
         str(cid): {"updated": _history_updated.get(cid, 0), "turns": list(dq),
-                   "lang": _language.get(cid, "")}
+                   "lang": _language.get(cid, ""),
+                   "text_lang": _text_language.get(cid, "")}
         for cid, dq in _history.items() if dq
     }
     try:
@@ -89,6 +96,8 @@ def _load_history() -> None:
             _history_updated[cid] = updated
             if entry.get("lang"):
                 _language[cid] = entry["lang"]
+            if entry.get("text_lang"):
+                _text_language[cid] = entry["text_lang"]
             loaded += 1
     log.info("loaded persisted history for %d conversation(s)", loaded)
 
@@ -102,10 +111,12 @@ def reset_history(chat_id: int | None = None) -> None:
         _history.clear()
         _history_updated.clear()
         _language.clear()
+        _text_language.clear()
     else:
         _history.pop(chat_id, None)
         _history_updated.pop(chat_id, None)
         _language.pop(chat_id, None)
+        _text_language.pop(chat_id, None)
     _save_history()
 
 
@@ -113,6 +124,21 @@ def last_language(chat_id: int) -> str:
     """ISO code of the language the AI last replied in for this chat, "" when
     unknown (no AI reply yet, or the model left the tag out)."""
     return _language.get(chat_id, "")
+
+
+def note_text_language(chat_id: int) -> None:
+    """Call after the AI answered a written message: its reply language
+    becomes the chat's language for voice notes (see _text_language)."""
+    lang = _language.get(chat_id, "")
+    if lang and _text_language.get(chat_id) != lang:
+        _text_language[chat_id] = lang
+        _save_history()
+
+
+def text_language(chat_id: int) -> str:
+    """Language of the AI's last reply to a written message in this chat,
+    "" when unknown."""
+    return _text_language.get(chat_id, "")
 
 
 _load_history()

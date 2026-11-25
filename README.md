@@ -182,7 +182,7 @@ Everything lives in `.env`; [`.env.example`](./.env.example) is the annotated li
 | `HISTORY_TTL_DAYS` | `7` | Days of silence before a chat's memory is dropped |
 | `WHISPER_ENABLED` | `1` | `0` ignores voice notes |
 | `WHISPER_MODEL` | `base` | `tiny`, `base`, `small`, `medium`, `large-v3` |
-| `WHISPER_LANGUAGE` | _(auto)_ | Force a language (e.g. `it`). With auto-detect, clips under 4 s or detected with low confidence are transcribed in the chat's language (last AI reply, else the sender's Telegram app language) |
+| `WHISPER_LANGUAGE` | _(auto)_ | Force a language (e.g. `it`). With auto-detect, clips under 4 s or detected with low confidence are transcribed in the chat's language (the AI's last reply to a written message, else the sender's Telegram app language) |
 | `VOICE_MAX_SECONDS` | `300` | Longer voice notes go to you instead of being transcribed (`0` = no limit) |
 | `VOICE_EMOJI` | `👀` | Default voice-note emoji (editable from the panel) |
 | `ACK_EMOJIS` | `👍 👌 🙏 😊` | Default emojis for messages that need no answer (editable from the panel) |
