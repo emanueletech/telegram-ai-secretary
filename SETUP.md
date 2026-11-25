@@ -189,18 +189,35 @@ sudo chown -R 1000:1000 data
 
 > On a VPS where your main user already has uid 1000 and is in the `docker` group, `sudo` is not needed. On a NAS where you SSH as a different user, it is.
 
-### 4e. Build & start
+### 4e. Start
+
+Every change to `main` is built by GitHub Actions and published as a ready-made
+image, `ghcr.io/emanueletech/telegram-ai-secretary` (amd64 and arm64), so the
+target only downloads it:
 
 ```sh
-docker compose up -d --build
+docker compose up -d
 docker compose logs -f telegram-ai-secretary
 ```
 
 On systems where Docker requires sudo:
 ```sh
-sudo docker compose up -d --build
+sudo docker compose up -d
 sudo docker compose logs -f telegram-ai-secretary
 ```
+
+To update to the latest published image (with Option A):
+```sh
+git pull
+docker compose pull
+docker compose up -d
+```
+
+To build from source on the target instead, add `--build`:
+`docker compose up -d --build`. You need it when you have extensions in
+`app/extensions/` (they are baked into the image, and the published one has
+none), and it's what `scripts/deploy.sh` does. Once you have built locally,
+a plain `up -d` keeps using your build until you run `docker compose pull`.
 
 You should see:
 ```
@@ -419,7 +436,7 @@ Check it took with the same probe the bot runs at startup:
 ```sh
 sudo /usr/bin/docker run --rm -u 1000:1000 \
   -v <DEPLOY_DIR>/data:/d \
-  telegram-ai-secretary:latest sh -c "touch /d/.probe && rm /d/.probe && echo OK"
+  ghcr.io/emanueletech/telegram-ai-secretary:latest sh -c "touch /d/.probe && rm /d/.probe && echo OK"
 ```
 
 Prevention: create and move `data/` **over SSH**, not through the UGOS file
@@ -462,7 +479,9 @@ Every 3-6 months it's worth bumping:
 - `python-telegram-bot` (may introduce new business handlers/features)
 - `claude-agent-sdk` (new backend message types, fixes)
 
-Edit `app/requirements.txt`, then:
+Edit `app/requirements.txt` and push to `main`: GitHub Actions publishes a new
+image, which the targets get with `docker compose pull && docker compose up -d`.
+To try the change on a target before pushing it:
 ```sh
 sudo docker compose build --no-cache
 sudo docker compose up -d
