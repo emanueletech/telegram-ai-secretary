@@ -108,11 +108,20 @@ VOICE_MAX_SECONDS = int(os.environ.get("VOICE_MAX_SECONDS", "300"))
 # Put before a transcribed voice note in what the AI reads. Without it the AI
 # only saw plain text, and to "can you hear this voice message?" it answered
 # that it can't listen to voice notes. In English on purpose (see
-# PROMO_HISTORY_NOTE): the reply language follows the transcription.
+# PROMO_HISTORY_NOTE). It also names the language the note was spoken in: a
+# short transcription ("no come stai") has no clear language of its own, so
+# the AI kept the language of the chat's earlier, misheard turns (Spanish).
 VOICE_NOTE_PREFIX = (
     "[Voice note, transcribed for you automatically: you did hear it. Reply "
     "in writing to what the person says; never say you can't listen to "
     "voice notes.]\n"
+)
+VOICE_NOTE_LANG_PREFIX = (
+    "[Voice note, transcribed for you automatically: you did hear it. It was "
+    "spoken in the language with ISO 639-1 code \"{lang}\": reply in that "
+    "language, whatever language the earlier messages were in. Reply in "
+    "writing to what the person says; never say you can't listen to voice "
+    "notes.]\n"
 )
 # Persisted on the mounted data volume so the model isn't re-downloaded on rebuild
 WHISPER_CACHE_DIR = DATA_DIR / "whisper-models"

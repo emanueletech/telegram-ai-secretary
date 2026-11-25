@@ -38,7 +38,7 @@ def _whisper_code(lang: str | None, supported) -> str | None:
     return code if code and code in supported else None
 
 
-def _transcribe_sync(audio_bytes: bytes, hint: str | None) -> str:
+def _transcribe_sync(audio_bytes: bytes, hint: str | None) -> tuple[str, str]:
     model = _get_model()
 
     def run(language):
@@ -65,12 +65,13 @@ def _transcribe_sync(audio_bytes: bytes, hint: str | None) -> str:
     log.info("transcribed %.1fs audio (lang=%s, p=%.2f) -> %d chars",
              getattr(info, "duration", 0.0), getattr(info, "language", "?"),
              getattr(info, "language_probability", 0.0) or 0.0, len(text))
-    return text
+    return text, getattr(info, "language", "") or ""
 
 
-async def transcribe(audio_bytes: bytes, hint: str | None = None) -> str:
-    """Transcribe an Opus/OGG voice note. Runs the blocking model in a thread
-    so the asyncio event loop (and the rest of the bot) stays responsive.
+async def transcribe(audio_bytes: bytes, hint: str | None = None) -> tuple[str, str]:
+    """Transcribe an Opus/OGG voice note into (text, language code). Runs the
+    blocking model in a thread so the asyncio event loop (and the rest of the
+    bot) stays responsive.
 
     hint: the language this chat is likely in, used instead of Whisper's own
     guess when that guess is unreliable (very short clip, low confidence)."""

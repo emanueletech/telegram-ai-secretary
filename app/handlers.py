@@ -19,7 +19,7 @@ from config import (ACK_INSTRUCTIONS, ACK_MARKER, AI_FAILURE_ACK, DEFAULT_AWAY_M
                     PROMO_APPEND_TEXT, PROMO_CHANNEL_URL,
                     PROMO_COOLDOWN_DAYS, PROMO_HISTORY_NOTE, PROMO_INSTRUCTIONS,
                     PROMO_MANUAL_TEXT, REPLY_COOLDOWN_SECONDS, SENDER_CONTEXT,
-                    VOICE_NOTE_PREFIX,
+                    VOICE_NOTE_LANG_PREFIX, VOICE_NOTE_PREFIX,
                     UI_LANGUAGE, VOICE_MAX_SECONDS, WHISPER_ENABLED)
 from i18n import t
 from state import (bump_stat, chat_name, clear_takeover, in_schedule, is_paused,
@@ -363,7 +363,8 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             # to a written message (never to a voice note, which could itself
             # have been misheard), else the sender's Telegram app language.
             lang_hint = ai.text_language(chat_id) or getattr(msg.from_user, "language_code", None)
-            incoming_text = (await transcribe.transcribe(audio, lang_hint)).strip()
+            incoming_text, voice_lang = await transcribe.transcribe(audio, lang_hint)
+            incoming_text = incoming_text.strip()
         except Exception as e:
             # Don't leave the customer hanging (they may already have the 👀):
             # ack and pass the note to the owner, like an over-long one.
@@ -412,7 +413,14 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         try:
             # 3rd value is the [[CHANNEL]] marker: stripped from the text by
             # ai.py and ignored here — the invite line is the bot's job now.
-            ai_text = (VOICE_NOTE_PREFIX + incoming_text) if msg.voice else incoming_text
+            if msg.voice:
+                # Name the spoken language: a short transcription has none of
+                # its own, and the AI would keep the chat's earlier language.
+                prefix = (VOICE_NOTE_LANG_PREFIX.format(lang=voice_lang)
+                          if voice_lang else VOICE_NOTE_PREFIX)
+                ai_text = prefix + incoming_text
+            else:
+                ai_text = incoming_text
             reply, forward, _ = await ai.generate_reply(chat_id, ai_text, system_prompt)
             if not msg.voice:
                 ai.note_text_language(chat_id)
