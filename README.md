@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Telegram-Chat_Automation-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Chat Automation" />
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12" />
-  <img src="https://img.shields.io/badge/Docker-self--hosted-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker, self-hosted" />
+  <a href="https://github.com/emanueletech/telegram-ai-secretary/pkgs/container/telegram-ai-secretary"><img src="https://img.shields.io/badge/Docker-self--hosted-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker, self-hosted: image on ghcr.io" /></a>
   <img src="https://img.shields.io/badge/voice-on--device-2EE66B?style=for-the-badge" alt="On-device voice transcription" />
   <img src="https://img.shields.io/badge/license-PolyForm_NC-555?style=for-the-badge" alt="PolyForm Noncommercial license" />
 </p>
@@ -152,8 +152,11 @@ flowchart LR
    cd telegram-ai-secretary
    cp .env.example .env      # fill BOT_TOKEN, OWNER_USER_ID and the AI credential
    mkdir -p data && sudo chown -R 1000:1000 data
-   docker compose up -d --build
+   docker compose up -d
    ```
+   This downloads the ready-made image from `ghcr.io` (amd64 and arm64), so there's nothing to build.
+   To update later: `git pull && docker compose pull && docker compose up -d`.
+   Prefer building from source? `docker compose up -d --build`.
 6. **Connect it**: in Telegram, **Settings → Chat Automation** → add your bot and allow **Reply to messages**.
 7. Send **`/menu`** to your bot. Done.
 
@@ -199,7 +202,7 @@ A few behaviours are constants in `app/config.py`: reply cooldown per chat (8 s)
 
 Need something only your deployment wants, like a custom `/start <payload>` flow or an extra command? Don't fork: drop a module into `app/extensions/`.
 
-At startup `bot.py` loads every `app/extensions/*.py` (names starting with `_` or `.` are skipped) and calls its `register(app)`, **before** the built-in handlers. Within a handler group the first match wins, so an extension can claim `/start mypayload` while a plain `/start` still opens your panel. A failing extension is logged and skipped, never fatal. Extra Python dependencies go in `app/extensions/requirements.txt`, which the Dockerfile installs when present. Start from [`app/extensions/_example.py`](./app/extensions/_example.py).
+At startup `bot.py` loads every `app/extensions/*.py` (names starting with `_` or `.` are skipped) and calls its `register(app)`, **before** the built-in handlers. Within a handler group the first match wins, so an extension can claim `/start mypayload` while a plain `/start` still opens your panel. A failing extension is logged and skipped, never fatal. Extra Python dependencies go in `app/extensions/requirements.txt`, which the Dockerfile installs when present. Extensions are baked into the image, so the ready-made one from `ghcr.io` doesn't have yours: build it with `docker compose up -d --build` (`scripts/deploy.sh` always does). Start from [`app/extensions/_example.py`](./app/extensions/_example.py).
 
 To keep those modules, and your personal settings, out of a public fork, keep them in a private folder laid out like the deploy directory and pass it to `scripts/deploy.sh` as `OVERLAY=`:
 
@@ -235,6 +238,8 @@ app/
   extensions/    optional per-deployment modules
 scripts/
   deploy.sh      update the clone, copy to the server, rebuild, show the logs
+.github/workflows/
+  docker-publish.yml  builds the image and publishes it to ghcr.io on every change to main
 ```
 
 The AI signals decisions with internal markers that are stripped before anything reaches the customer: `[[FORWARD]]` to hand the chat to you, `[[LANG:xx]]` for the language it replied in. Telegram updates used: `business_connection`, `business_message`, `edited_business_message`, `deleted_business_messages`, plus `message` and `callback_query` for the panel. *Chat Automation* is what Telegram called *Business* until May 2026, when it stopped requiring Premium.

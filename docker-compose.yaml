@@ -1,7 +1,11 @@
 services:
   telegram-ai-secretary:
+    # Ready-made image, built and published by .github/workflows/docker-publish.yml.
+    # "docker compose up -d" downloads it (and builds from source only if the
+    # download fails); "docker compose up -d --build" builds it here instead,
+    # which you need when you add your own app/extensions/.
+    image: ghcr.io/emanueletech/telegram-ai-secretary:latest
     build: .
-    image: telegram-ai-secretary:latest
     container_name: telegram-ai-secretary
     env_file:
       - .env
