@@ -358,7 +358,11 @@ async def on_business_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         try:
             tg_file = await context.bot.get_file(msg.voice.file_id)
             audio = bytes(await tg_file.download_as_bytearray())
-            incoming_text = (await transcribe.transcribe(audio)).strip()
+            # Whisper's language guess is unreliable on a 1–2 s clip; give it
+            # the chat's language to fall back on (last AI reply, else the
+            # sender's Telegram app language).
+            lang_hint = ai.last_language(chat_id) or getattr(msg.from_user, "language_code", None)
+            incoming_text = (await transcribe.transcribe(audio, lang_hint)).strip()
         except Exception as e:
             # Don't leave the customer hanging (they may already have the 👀):
             # ack and pass the note to the owner, like an over-long one.

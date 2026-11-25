@@ -182,7 +182,7 @@ Everything lives in `.env`; [`.env.example`](./.env.example) is the annotated li
 | `HISTORY_TTL_DAYS` | `7` | Days of silence before a chat's memory is dropped |
 | `WHISPER_ENABLED` | `1` | `0` ignores voice notes |
 | `WHISPER_MODEL` | `base` | `tiny`, `base`, `small`, `medium`, `large-v3` |
-| `WHISPER_LANGUAGE` | _(auto)_ | Force a language (e.g. `it`) for short clips |
+| `WHISPER_LANGUAGE` | _(auto)_ | Force a language (e.g. `it`). With auto-detect, clips under 4 s or detected with low confidence are transcribed in the chat's language (last AI reply, else the sender's Telegram app language) |
 | `VOICE_MAX_SECONDS` | `300` | Longer voice notes go to you instead of being transcribed (`0` = no limit) |
 | `VOICE_EMOJI` | `👀` | Default voice-note emoji (editable from the panel) |
 | `ACK_EMOJIS` | `👍 👌 🙏 😊` | Default emojis for messages that need no answer (editable from the panel) |
@@ -196,7 +196,7 @@ Everything lives in `.env`; [`.env.example`](./.env.example) is the annotated li
 | `UI_LANGUAGE` | `en` | Language of your panel and notices: `en` or `it` |
 | `FORWARD_ACK` / `FORWARD_ACK_IT` | _(generic)_ | Reply sent when a chat is handed to you without an AI answer |
 
-A few behaviours are constants in `app/config.py`: reply cooldown per chat (8 s), forward cooldown (5 min), memory length (12 turns), incoming text cap (3000 characters).
+A few behaviours are constants in `app/config.py`: reply cooldown per chat (8 s), forward cooldown (5 min), memory length (12 turns), incoming text cap (3000 characters), when a voice note's detected language is trusted (4 s or longer, 80% confidence).
 
 ## 🧩 Extensions & private overlay
 

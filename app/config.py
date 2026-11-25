@@ -93,6 +93,13 @@ WHISPER_DEVICE = os.environ.get("WHISPER_DEVICE", "cpu").strip()
 WHISPER_COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8").strip()
 # "" = auto-detect language; set e.g. "it" to force Italian for better accuracy
 WHISPER_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "").strip()
+# Auto-detection needs a few seconds of speech: a 1.7 s Italian "Emanuele, ci
+# sei?" came out as Spanish ("Manuel, ¿cómo está ahí?") and the AI answered in
+# Spanish. When the clip is shorter than this, or Whisper is less sure than
+# VOICE_LANG_MIN_PROB, the note is transcribed again in the chat's language
+# (the one the AI last replied in, else the sender's Telegram app language).
+VOICE_LANG_SHORT_SECONDS = 4.0
+VOICE_LANG_MIN_PROB = 0.8
 # Voice notes longer than this many seconds are not transcribed (CPU cost on
 # small hosts); the customer gets an ack and the note is handed off to the
 # owner, who hears it directly in the business chat. 0 = no limit.
